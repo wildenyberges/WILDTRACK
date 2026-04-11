@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>WILDTRACK GPS — Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  --beige:   #F0E4CC;
+  --beige2:  #E4D4B4;
+  --beige3:  #C8B890;
+  --brown:   #3D1E08;
+  --brown2:  #2C1200;
+  --orange:  #E07A0A;
+  --amber:   #EDA000;
+  --cream:   #FFF8EE;
+  --green:   #28A86A;
+  --red:     #CC3A3A;
+  --text:    #2C1500;
+  --text2:   #5C3820;
+  --text3:   #8A6040;
+  --border:  rgba(92,56,32,0.18);
+  --border2: rgba(92,56,32,0.09);
+  --card:    #FFFBF4;
+  --font-h:  'Barlow Condensed', sans-serif;
+  --font:    'Barlow', sans-serif;
+  --mono:    'JetBrains Mono', monospace;
+  --radius:  12px;
+  --topbar:  60px;
+  --botnav:  68px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--font)}
+button{cursor:pointer;border:none;outline:none;font-family:var(--font)}
+input,select,textarea{font-family:var(--font);outline:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--beige2)}
+::-webkit-scrollbar-thumb{background:var(--beige3);border-radius:2px}
+
+/* Textura corrugada reutilizable */
+.tex {
+  background-color:var(--beige);
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(140,100,50,0.05) 3px,rgba(140,100,50,0.05) 4px),
+    repeating-linear-gradient(90deg,transparent,transparent 10px,rgba(140,100,50,0.025) 10px,rgba(140,100,50,0.025) 11px);
+}
+
+/* LOGIN */
+#login-screen {
+  position:fixed;inset:0;z-index:9999;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+#login-screen.tex { background-color:#DDD0B0; }
+
+.login-card {
+  position:relative;z-index:1;width:100%;max-width:370px;
+  background:#3A1C08;
+  border-radius:24px;padding:44px 36px 40px;
+  box-shadow:0 32px 80px rgba(0,0,0,0.50),0 2px 0 rgba(255,210,100,0.08) inset,0 -2px 0 rgba(0,0,0,0.30) inset,0 0 0 1px rgba(255,160,60,0.12);
+}
+.login-logo{text-align:center;margin-bottom:30px}
+.login-logo-icon{width:66px;height:66px;background:linear-gradient(145deg,#FFB520,#E07A0A);border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:14px;box-shadow:0 6px 24px rgba(224,122,10,0.55),0 2px 0 rgba(255,220,100,0.25) inset}
+.login-logo h1{font-family:var(--font-h);font-size:32px;font-weight:800;letter-spacing:3.5px;color:#FFF6E8}
+.login-logo p{font-size:10px;font-weight:700;letter-spacing:4px;color:var(--amber);text-transform:uppercase;margin-top:5px}
+.login-label{display:block;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,215,150,0.55);margin-bottom:7px}
+.login-input{width:100%;padding:12px 16px;background:rgba(0,0,0,0.28);border:1px solid rgba(255,160,60,0.20);border-radius:10px;color:#FFF6E8;font-size:14px;transition:all 0.2s;margin-bottom:16px}
+.login-input:focus{border-color:rgba(237,160,0,0.55);box-shadow:0 0 0 3px rgba(237,160,0,0.12)}
+.login-input::placeholder{color:rgba(255,190,120,0.28)}
+.login-btn{width:100%;padding:15px;margin-top:6px;background:linear-gradient(145deg,#FFB520,#E07A0A);color:#2C1000;border-radius:10px;font-family:var(--font-h);font-size:17px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;transition:all 0.2s;box-shadow:0 6px 20px rgba(224,122,10,0.48),0 1px 0 rgba(255,220,100,0.22) inset}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(224,122,10,0.62)}
+.login-btn:active{transform:translateY(1px)}
+.login-btn:disabled{opacity:0.50;cursor:not-allowed;transform:none}
+.login-error{background:rgba(160,30,30,0.22);border:1px solid rgba(200,60,60,0.28);border-radius:8px;padding:10px 14px;font-size:13px;color:#ffaaaa;margin-top:12px;display:none;text-align:center}
+.login-footer{text-align:center;margin-top:22px;font-size:11px;color:rgba(255,200,140,0.36)}
+
+/* APP */
+#app{display:none;flex-direction:column;width:100%;height:100%;position:fixed;inset:0}
+
+.topbar{height:var(--topbar);min-height:var(--topbar);background:var(--brown);border-bottom:2px solid rgba(224,122,10,0.28);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;box-shadow:0 2px 14px rgba(0,0,0,0.20)}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-icon{width:34px;height:34px;background:linear-gradient(145deg,#FFB520,#E07A0A);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 3px 10px rgba(224,122,10,0.38)}
+.topbar-brand{font-family:var(--font-h);font-size:20px;font-weight:800;letter-spacing:2px;color:#FFF6E8}
+.topbar-brand span{color:var(--amber)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar-client{font-size:12px;color:rgba(255,220,160,0.68);font-weight:500;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-badge{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);flex-shrink:0}
+.btn-logout{padding:6px 12px;border-radius:8px;background:rgba(200,50,50,0.12);border:1px solid rgba(200,60,60,0.18);color:#ffaaaa;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all 0.2s}
+.btn-logout:hover{background:rgba(200,50,50,0.22)}
+.btn-chat-top{position:relative;width:34px;height:34px;border-radius:50%;background:rgba(255,181,32,0.14);border:1px solid rgba(255,181,32,0.28);color:var(--amber);display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+.btn-chat-top:hover{background:rgba(255,181,32,0.24)}
+.btn-chat-badge{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--brown);display:none}
+.btn-chat-badge.show{display:block}
+
+.content{flex:1;overflow:hidden;position:relative;height:calc(100% - var(--topbar) - var(--botnav))}
+.screen{display:none;position:absolute;inset:0;overflow-y:auto;overflow-x:hidden}
+.screen.active{display:block}
+
+.botnav{height:var(--botnav);min-height:var(--botnav);background:var(--cream);border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,0.07)}
+.botnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;transition:all 0.2s;padding:8px 4px;position:relative}
+.botnav-item.active{background:rgba(224,122,10,0.07)}
+.botnav-item.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:32px;height:2px;border-radius:0 0 2px 2px;background:linear-gradient(90deg,var(--orange),var(--amber))}
+.botnav-ico{font-size:20px;transition:transform 0.2s}
+.botnav-item.active .botnav-ico{transform:scale(1.12)}
+.botnav-lbl{font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text3)}
+.botnav-item.active .botnav-lbl{color:var(--orange)}
+.botnav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;display:none}
+.botnav-badge.show{display:block}
+
+/* MAPA */
+#screen-map{overflow:hidden;position:absolute;inset:0;display:none}
+#screen-map.active{display:block}
+#map{width:100%;height:100%}
+.map-overlay{position:absolute;bottom:16px;left:16px;right:16px;z-index:500;pointer-events:none}
+.map-stats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.map-stat-pill{background:rgba(255,251,244,0.95);border:1px solid var(--border);border-radius:20px;padding:7px 14px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text);pointer-events:auto;box-shadow:0 2px 10px rgba(0,0,0,0.10)}
+.map-stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.map-stat-dot.g{background:var(--green)}
+.map-stat-dot.y{background:var(--amber)}
+.map-stat-dot.r{background:var(--red)}
+.leaflet-popup-content-wrapper{background:var(--cream)!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:0 8px 28px rgba(0,0,0,0.16)!important}
+.leaflet-popup-tip{background:var(--cream)!important}
+.leaflet-popup-content{color:var(--text)!important;font-family:var(--font)!important;margin:12px 16px!important}
+.popup-name{font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:6px;color:var(--brown)}
+.popup-row{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--text2);margin-top:3px}
+.popup-val{color:var(--brown);font-weight:700;font-family:var(--mono)}
+
+/* UNIDADES */
+#screen-units{padding:20px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.section-title{font-family:var(--font-h);font-size:24px;font-weight:800;letter-spacing:1px;color:var(--brown)}
+.filter-row{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
+.filter-btn{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:var(--card);border:1px solid var(--border);color:var(--text2);white-space:nowrap;transition:all 0.2s}
+.filter-btn.active{background:linear-gradient(145deg,var(--orange),var(--amber));border-color:transparent;color:#fff;box-shadow:0 3px 10px rgba(224,122,10,0.28)}
+.search-box{width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;margin-bottom:14px}
+.search-box::placeholder{color:var(--text3)}
+.search-box:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(224,122,10,0.09)}
+.unit-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.unit-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.unit-card.moving::before{background:var(--green)}
+.unit-card.stopped::before{background:var(--amber)}
+.unit-card.offline::before{background:var(--red)}
+.unit-card:hover{box-shadow:0 4px 14px rgba(0,0,0,0.09);transform:translateY(-1px)}
+.unit-card:active{transform:scale(0.99)}
+.unit-top{display:flex;align-items:flex-start;justify-content:space-between}
+.unit-name{font-family:var(--font-h);font-size:18px;font-weight:800;color:var(--brown)}
+.unit-status{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:12px;flex-shrink:0}
+.unit-status.moving{background:rgba(40,168,106,0.12);color:#1A7A4A}
+.unit-status.stopped{background:rgba(237,160,0,0.14);color:#A07000}
+.unit-status.offline{background:rgba(204,58,58,0.10);color:var(--red)}
+.unit-plate{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:2px}
+.unit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.unit-kv{display:flex;flex-direction:column;gap:2px}
+.unit-k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px}
+.unit-v{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--brown)}
+.unit-v.speed-val{color:var(--orange)}
+.unit-time{margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);font-size:11px;color:var(--text3)}
+.units-empty{text-align:center;padding:60px 24px;color:var(--text3)}
+.units-empty .ico{font-size:48px;margin-bottom:12px}
+
+/* HISTORIAL */
+#screen-history{padding:20px}
+.hist-controls{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.hist-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.hist-select,.hist-date{flex:1;min-width:120px;padding:10px 12px;background:var(--beige2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px}
+.hist-select option{background:var(--cream);color:var(--text)}
+.hist-date{color-scheme:light}
+.hist-select:focus,.hist-date:focus{border-color:var(--orange)}
+.btn-primary{width:100%;padding:12px;border-radius:10px;background:linear-gradient(145deg,var(--orange),var(--amber));color:#fff;font-family:var(--font-h);font-size:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;transition:all 0.2s;box-shadow:0 4px 16px rgba(224,122,10,0.28)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(224,122,10,0.40)}
+.btn-primary:disabled{opacity:0.40;cursor:not-allowed;transform:none}
+#hist-map{width:100%;height:260px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.hist-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.hist-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.hist-stat-v{font-family:var(--font-h);font-size:24px;font-weight:800;color:var(--orange)}
+.hist-stat-k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-top:2px}
+
+/* ALERTAS */
+#screen-alerts{padding:20px}
+.alert-filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+.alert-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.alert-icon{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px}
+.alert-icon.speed{background:rgba(224,122,10,0.10)}
+.alert-icon.offline{background:rgba(204,58,58,0.09)}
+.alert-icon.geo{background:rgba(58,130,196,0.09)}
+.alert-icon.online{background:rgba(40,168,106,0.09)}
+.alert-body{flex:1;min-width:0}
+.alert-title{font-weight:700;font-size:14px;margin-bottom:2px;color:var(--brown)}
+.alert-desc{font-size:12px;color:var(--text2);line-height:1.4}
+.alert-time{font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+.alert-unread{width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:4px}
+.no-alerts{text-align:center;padding:60px 24px;color:var(--text3)}
+.no-alerts .ico{font-size:48px;margin-bottom:12px}
+
+/* REPORTES */
+#screen-reports{padding:20px}
+.report-controls{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.report-dates{display:flex;gap:10px;margin-bottom:10px}
+.report-date{flex:1;padding:10px 12px;background:var(--beige2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;color-scheme:light}
+.report-date:focus{border-color:var(--orange)}
+.report-table-wrap{overflow-x:auto;margin-top:16px}
+.report-table{width:100%;border-collapse:collapse;font-size:12px;min-width:480px}
+.report-table th{background:rgba(224,122,10,0.08);color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.report-table td{padding:10px 12px;border-bottom:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px}
+.report-table tr:last-child td{border-bottom:none}
+.report-table tr:hover td{background:rgba(224,122,10,0.04)}
+.report-name-cell{font-family:var(--font);font-size:12px;font-weight:700;color:var(--brown)}
+.export-row{display:flex;gap:8px;margin-top:12px}
+.btn-export{flex:1;padding:10px;border-radius:8px;background:rgba(224,122,10,0.07);border:1px solid var(--border);color:var(--orange);font-size:12px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;transition:all 0.2s}
+.btn-export:hover{background:rgba(224,122,10,0.15)}
+
+/* CHAT */
+#screen-chat{display:none;flex-direction:column;height:100%;overflow:hidden}
+#screen-chat.active{display:flex}
+.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--brown)}
+.chat-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#FFB520,#E07A0A);display:flex;align-items:center;justify-content:center;font-size:20px}
+.chat-header-info h3{font-size:14px;font-weight:700;color:#FFF6E8}
+.chat-header-info p{font-size:11px;color:rgba(40,200,120,0.90)}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.chat-msg{max-width:78%;display:flex;flex-direction:column;gap:3px}
+.chat-msg.mine{align-self:flex-end;align-items:flex-end}
+.chat-msg.theirs{align-self:flex-start;align-items:flex-start}
+.chat-bubble{padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.45}
+.chat-msg.mine .chat-bubble{background:linear-gradient(145deg,var(--orange),var(--amber));color:#fff;font-weight:500;border-radius:16px 16px 4px 16px;box-shadow:0 3px 10px rgba(224,122,10,0.22)}
+.chat-msg.theirs .chat-bubble{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px}
+.chat-time{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.chat-input-area{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--cream)}
+.chat-input{flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:24px;color:var(--text);font-size:13px;transition:border-color 0.2s}
+.chat-input:focus{border-color:var(--orange)}
+.chat-input::placeholder{color:var(--text3)}
+.btn-send{width:42px;height:42px;border-radius:50%;flex-shrink:0;background:linear-gradient(145deg,var(--orange),var(--amber));color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;box-shadow:0 4px 12px rgba(224,122,10,0.35);font-weight:700}
+.btn-send:hover{transform:scale(1.10)}
+.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:10px}
+.chat-empty .ico{font-size:48px}
+.chat-empty p{font-size:13px;text-align:center;line-height:1.5}
+
+/* UTILS */
+.spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--orange);animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.refresh-btn{position:fixed;bottom:calc(var(--botnav)+16px);right:16px;z-index:200;width:44px;height:44px;border-radius:50%;background:linear-gradient(145deg,var(--orange),var(--amber));color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(224,122,10,0.38);transition:all 0.2s}
+.refresh-btn:hover{transform:scale(1.10)}
+.refresh-btn .ico{display:inline-block}
+.refresh-btn.spinning .ico{animation:spin 0.8s linear infinite}
+.toast{position:fixed;bottom:calc(var(--botnav)+16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--brown);color:#FFF6E8;border-radius:24px;padding:10px 20px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.22);z-index:9000;opacity:0;transition:all 0.3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(min-width:768px){.unit-grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<div id="login-screen" class="tex">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <defs>
+    <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFB520"/>
+      <stop offset="100%" style="stop-color:#E07A0A"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="22" fill="url(#lg1)"/>
+  <polygon points="50,12 75,72 50,58 25,72" fill="white" opacity="0.96"/>
+  <polygon points="50,58 25,72 50,52" fill="rgba(0,0,0,0.13)"/>
+  <circle cx="78" cy="22" r="17" fill="#3D1E08"/>
+  <text x="78" y="28" text-anchor="middle" fill="white" font-family="Barlow Condensed,sans-serif" font-size="15" font-weight="800">W</text>
+</svg></div>
+      <h1>WILDTRACK</h1>
+      <p>Portal de Rastreo</p>
+    </div>
+    <label class="login-label">Usuario</label>
+    <input type="text" id="login-user" class="login-input" placeholder="tu_usuario" autocomplete="username" autocapitalize="none"/>
+    <label class="login-label">Contraseña</label>
+    <input type="password" id="login-pass" class="login-input" placeholder="••••••••" autocomplete="current-password"/>
+    <button class="login-btn" id="btn-login" onclick="doLogin()">Entrar al Portal</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-footer">© 2026 Wildtrack GPS · Plataforma de Rastreo Vehicular</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <defs>
+    <linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFB520"/>
+      <stop offset="100%" style="stop-color:#E07A0A"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="22" fill="url(#lg2)"/>
+  <polygon points="50,12 75,72 50,58 25,72" fill="white" opacity="0.96"/>
+  <polygon points="50,58 25,72 50,52" fill="rgba(0,0,0,0.13)"/>
+  <circle cx="78" cy="22" r="17" fill="#3D1E08"/>
+  <text x="78" y="28" text-anchor="middle" fill="white" font-family="Barlow Condensed,sans-serif" font-size="15" font-weight="800">W</text>
+</svg></div>
+      <div class="topbar-brand">WILD<span>TRACK</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-badge" id="conn-badge"></div>
+      <div class="topbar-client" id="client-name">—</div>
+      <button class="btn-chat-top" onclick="showScreen('chat',document.querySelectorAll('.botnav-item')[5])" id="btn-chat-top" title="Soporte">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
+        </svg>
+        <span class="btn-chat-badge" id="chat-badge-top"></span>
+      </button>
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="content tex">
+    <div class="screen active" id="screen-map">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <div class="map-stats">
+          <div class="map-stat-pill"><div class="map-stat-dot g"></div><span id="cnt-moving">0</span> en movimiento</div>
+          <div class="map-stat-pill"><div class="map-stat-dot y"></div><span id="cnt-stopped">0</span> detenidos</div>
+          <div class="map-stat-pill"><div class="map-stat-dot r"></div><span id="cnt-offline">0</span> sin señal</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-units">
+      <div style="padding:16px">
+        <div class="section-header">
+          <div class="section-title">Unidades</div>
+          <div style="font-size:12px;color:var(--text3)" id="units-count">0 unidades</div>
+        </div>
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="filterUnits('all',this)">Todas</button>
+          <button class="filter-btn" onclick="filterUnits('moving',this)">Movimiento</button>
+          <button class="filter-btn" onclick="filterUnits('stopped',this)">Detenidas</button>
+          <button class="filter-btn" onclick="filterUnits('offline',this)">Sin señal</button>
+        </div>
+        <input type="text" class="search-box" id="units-search" placeholder="🔍  Buscar unidad o placa..." oninput="renderUnits()"/>
+        <div id="units-list"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-history">
+      <div style="padding:16px">
+        <div class="section-title" style="margin-bottom:16px">Historial de Rutas</div>
+        <div class="hist-controls">
+          <div class="hist-row"><select class="hist-select" id="hist-unit"><option value="">— Seleccionar unidad —</option></select></div>
+          <div class="hist-row"><input type="date" class="hist-date" id="hist-from"/><input type="date" class="hist-date" id="hist-to"/></div>
+          <button class="btn-primary" id="btn-hist" onclick="loadHistory()">Ver Historial</button>
+        </div>
+        <div id="hist-map" style="display:none"></div>
+        <div class="hist-summary" id="hist-summary" style="display:none">
+          <div class="hist-stat"><div class="hist-stat-v" id="h-dist">—</div><div class="hist-stat-k">Distancia</div></div>
+          <div class="hist-stat"><div class="hist-stat-v" id="h-time">—</div><div class="hist-stat-k">Tiempo</div></div>
+          <div class="hist-stat"><div class="hist-stat-v" id="h-speed">—</div><div class="hist-stat-k">Vel. máx.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-alerts">
+      <div style="padding:16px">
+        <div class="section-header">
+          <div class="section-title">Alertas</div>
+          <div style="font-size:12px;color:var(--text3)" id="alerts-count">0 alertas</div>
+        </div>
+        <div class="alert-filters">
+          <button class="filter-btn active" onclick="filterAlerts('all',this)">Todas</button>
+          <button class="filter-btn" onclick="filterAlerts('speed',this)">Velocidad</button>
+          <button class="filter-btn" onclick="filterAlerts('offline',this)">Conexión</button>
+          <button class="filter-btn" onclick="filterAlerts('geo',this)">Geocerca</button>
+        </div>
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-reports">
+      <div style="padding:16px">
+        <div class="section-title" style="margin-bottom:16px">Reportes de Flota</div>
+        <div class="report-controls">
+          <div class="report-dates"><input type="date" class="report-date" id="rep-from"/><input type="date" class="report-date" id="rep-to"/></div>
+          <button class="btn-primary" onclick="loadReport()">Generar Reporte</button>
+        </div>
+        <div class="report-table-wrap" id="report-content" style="display:none">
+          <table class="report-table">
+            <thead><tr><th>Unidad</th><th>Placa</th><th>Distancia</th><th>Vel. máx.</th><th>Paradas</th><th>T. motor</th></tr></thead>
+            <tbody id="report-body"></tbody>
+          </table>
+          <div class="export-row"><button class="btn-export" onclick="exportCSV()">⬇ Exportar CSV</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-chat">
+      <div class="chat-header">
+        <div class="chat-avatar"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <defs>
+    <linearGradient id="lg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFB520"/>
+      <stop offset="100%" style="stop-color:#E07A0A"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#lg3)"/>
+  <polygon points="50,18 72,68 50,56 28,68" fill="white" opacity="0.96"/>
+  <polygon points="50,56 28,68 50,50" fill="rgba(0,0,0,0.13)"/>
+</svg></div>
+        <div class="chat-header-info"><h3>Soporte Wildtrack GPS</h3><p>● En línea</p></div>
+      </div>
+      <div class="chat-messages tex" id="chat-messages">
+        <div class="chat-empty"><div class="ico">💬</div><p>¿Tienes alguna consulta?<br>Escríbenos y te respondemos.</p></div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chat-input" placeholder="Escribe tu mensaje..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+        <button class="btn-send" onclick="sendMsg()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="botnav">
+    <button class="botnav-item active" onclick="showScreen('map',this)"><span class="botnav-ico">🗺️</span><span class="botnav-lbl">Mapa</span></button>
+    <button class="botnav-item" onclick="showScreen('units',this)"><span class="botnav-ico">🚗</span><span class="botnav-lbl">Unidades</span></button>
+    <button class="botnav-item" onclick="showScreen('history',this)"><span class="botnav-ico">📍</span><span class="botnav-lbl">Historial</span></button>
+    <button class="botnav-item" onclick="showScreen('alerts',this)"><span class="botnav-ico">🔔</span><span class="botnav-lbl">Alertas</span><span class="botnav-badge" id="alert-badge">0</span></button>
+    <button class="botnav-item" onclick="showScreen('reports',this)"><span class="botnav-ico">📊</span><span class="botnav-lbl">Reportes</span></button>
+
+  </div>
+</div>
+
+<button class="refresh-btn" id="refresh-btn" onclick="refreshData()" style="display:none"><span class="ico">↻</span></button>
+<div class="toast" id="toast"></div>
+
+<script>
+const FIREBASE_CONFIG={apiKey:"AIzaSyCClVnaCkgt6gB0R_2ieTU3utAQgXXgCmE",authDomain:"gate-6f5c3.firebaseapp.com",databaseURL:"https://gate-6f5c3-default-rtdb.firebaseio.com",projectId:"gate-6f5c3",storageBucket:"gate-6f5c3.appspot.com",messagingSenderId:"989413502622",appId:"1:989413502622:web:827db7ea8b1a2b18de958f"};
+const PROXY_BASE="https://app.gpstracking.com.do/wox-api";
+let db,currentUser,groupId,clientName,allUnits=[],allAlerts=[],reportData=[],currentFilter='all',currentAlertFilter='all',leafMap=null,histMap=null,markers={},pollTimer=null,chatUnread=0,alertUnread=0;
+firebase.initializeApp(FIREBASE_CONFIG);
+db = firebase.database();
+// Mostrar login al arrancar
+window.addEventListener('DOMContentLoaded', () => showLogin());
+// Auth manual — sin Firebase Auth
+
+async function doLogin(){
+  const username = document.getElementById('login-user').value.trim().toLowerCase();
+  const pass     = document.getElementById('login-pass').value;
+  const btn      = document.getElementById('btn-login');
+  document.getElementById('login-error').style.display = 'none';
+  if (!username || !pass) { showErr('Completa todos los campos.'); return; }
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  try {
+    const snap = await db.ref('wox_portal/users').orderByChild('username').equalTo(username).get();
+    if (!snap.exists()) { showErr('Usuario no encontrado.'); btn.disabled=false; btn.textContent='Entrar al Portal'; return; }
+    let profile = null;
+    snap.forEach(child => { profile = { uid: child.key, ...child.val() }; });
+    if (!profile || profile.password !== pass) { showErr('Contraseña incorrecta.'); btn.disabled=false; btn.textContent='Entrar al Portal'; return; }
+    if (profile.active === false) { showErr('Cuenta desactivada.'); btn.disabled=false; btn.textContent='Entrar al Portal'; return; }
+    currentUser = { uid: profile.uid };
+    groupId    = profile.group_id;
+    clientName = profile.name || profile.username;
+    document.getElementById('client-name').textContent = clientName;
+    showApp(); initMap(); setDefaultDates(); loadUnits(); startPolling(); listenChat();
+  } catch(e) {
+    showErr('Error de conexión. Intenta de nuevo.');
+    btn.disabled=false; btn.textContent='Entrar al Portal';
+  }
+}
+function showErr(msg){const el=document.getElementById('login-error');el.textContent=msg;el.style.display='block';}
+function doLogout(){
+  if(pollTimer) clearInterval(pollTimer);
+  if(woxSocket) { woxSocket.disconnect(); woxSocket=null; }
+  currentUser=null; groupId=null; clientName=null;
+  allUnits=[]; allAlerts=[];
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  showLogin();
+}
+async function loadUserProfile(){ /* No usado en v1.6 — login manual */ }
+function showLogin(){document.getElementById('login-screen').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('refresh-btn').style.display='none';}
+function showApp(){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('refresh-btn').style.display='flex';setTimeout(initSocket, 1000);}
+function showScreen(name,el){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.botnav-item').forEach(b=>b.classList.remove('active'));document.getElementById('screen-'+name).classList.add('active');el.classList.add('active');if(name==='map'&&leafMap)setTimeout(()=>leafMap.invalidateSize(),100);if(name==='alerts'){alertUnread=0;updateAlertBadge();}if(name==='chat'){chatUnread=0;updateChatBadge();markChatRead();}if(name==='units')renderUnits();}
+function initMap(){if(leafMap)return;leafMap=L.map('map',{zoomControl:true,attributionControl:false});L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(leafMap);leafMap.setView([18.735693,-70.162651],9);}
+
+let woxSocket = null;
+function initSocket() {
+  if (woxSocket) return;
+  try {
+    woxSocket = io(WOX_SOCKET, {
+      transports: ['websocket','polling'],
+      query: { user_api_hash: WOX_HASH }
+    });
+    woxSocket.on('connect', () => {
+      document.getElementById('conn-badge').style.background = 'var(--green)';
+      woxSocket.emit('join', { user_api_hash: WOX_HASH });
+    });
+    woxSocket.on('disconnect', () => {
+      document.getElementById('conn-badge').style.background = 'var(--red)';
+    });
+    // Posición en tiempo real
+    woxSocket.on('object', (data) => {
+      if (!data || !data.id) return;
+      const idx = allUnits.findIndex(u => u.id === data.id);
+      if (idx >= 0) {
+        allUnits[idx] = { ...allUnits[idx], ...data };
+      } else {
+        allUnits.push(data);
+      }
+      updateMapMarkers();
+      updateCounters();
+    });
+    // Alertas en tiempo real
+    woxSocket.on('event', (data) => {
+      if (!data) return;
+      allAlerts.unshift(data);
+      if (allAlerts.length > 50) allAlerts.pop();
+      alertUnread++;
+      updateAlertBadge();
+      renderAlerts();
+    });
+  } catch(e) {
+    console.warn('Socket.io no disponible:', e.message);
+  }
+}
+function createMarkerIcon(status){
+  const ring={moving:'rgba(40,168,106,0.28)',stopped:'rgba(237,160,0,0.28)',offline:'rgba(204,58,58,0.28)'}[status]||'rgba(204,58,58,0.28)';
+  const svg=`<svg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg" width="30" height="30">
+    <circle cx="15" cy="15" r="14" fill="#3D1E08" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/>
+    <polygon points="15,6 22,22 15,18 8,22" fill="#E07A0A"/>
+    <polygon points="15,18 8,22 15,16" fill="rgba(0,0,0,0.18)"/>
+  </svg>`;
+  return L.divIcon({html:`<div style="width:30px;height:30px;border-radius:50%;box-shadow:0 0 0 6px ${ring},0 3px 10px rgba(0,0,0,0.22);">${svg}</div>`,className:'',iconSize:[30,30],iconAnchor:[15,15]});
+}
+function updateMapMarkers(){const bounds=[];allUnits.forEach(u=>{if(!u.lat||!u.lng)return;const ll=[parseFloat(u.lat),parseFloat(u.lng)];bounds.push(ll);const st=getStatus(u);if(markers[u.id]){markers[u.id].setLatLng(ll).setIcon(createMarkerIcon(st));}else{markers[u.id]=L.marker(ll,{icon:createMarkerIcon(st)}).bindPopup(buildPopup(u)).addTo(leafMap);}markers[u.id].getPopup().setContent(buildPopup(u));});if(bounds.length)leafMap.fitBounds(bounds,{padding:[30,30]});}
+function buildPopup(u){const st=getStatus(u),c={moving:'#28A86A',stopped:'#EDA000',offline:'#CC3A3A'}[st],l={moving:'En movimiento',stopped:'Detenido',offline:'Sin señal'}[st];return `<div class="popup-name">${u.name}</div><div class="popup-row"><span style="color:${c}">●</span> ${l}</div><div class="popup-row">Velocidad: <span class="popup-val">${u.speed||0} km/h</span></div><div class="popup-row">Placa: <span class="popup-val">${u.plate_number||'—'}</span></div><div class="popup-row" style="font-size:10px;color:#8A6040">${formatTime(u.dt_tracker||u.dt_server)}</div>`;}
+async function woxGet(endpoint){
+  const r = await fetch(`${WOX_BASE}/api/${endpoint}&user_api_hash=${encodeURIComponent(WOX_HASH)}`);
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+async function loadUnits(){
+  try {
+    // Si groupId es 0 o null carga todos, sino filtra por grupo
+    const gParam = (groupId && groupId !== 0) ? `&group_id=${groupId}` : '';
+    const r = await fetch(`${WOX_BASE}/api/devices?user_api_hash=${encodeURIComponent(WOX_HASH)}${gParam}`);
+    const data = await r.json();
+    if (data.status === 1) {
+      allUnits = data.data || [];
+      updateMapMarkers();
+      renderUnits();
+      updateCounters();
+      populateHistUnit();
+    }
+  } catch(e) { loadDemoData(); }
+}
+async function loadAlerts(){ /* Alertas via Socket.io — se actualizan en listenSocket() */ }
+async function loadReport(){const from=document.getElementById('rep-from').value,to=document.getElementById('rep-to').value;if(!from||!to){showToast('Selecciona fechas');return;}try{const data=await woxGet(`report?group_id=${groupId}&date_from=${from}&date_to=${to}`);reportData=Array.isArray(data)?data:(data.data||[]);renderReport();}catch(e){showToast('Error cargando reporte');}}
+async function loadHistory(){const uid=document.getElementById('hist-unit').value,from=document.getElementById('hist-from').value,to=document.getElementById('hist-to').value;if(!uid||!from||!to){showToast('Completa todos los campos');return;}const btn=document.getElementById('btn-hist');btn.disabled=true;btn.textContent='Cargando...';try{const data=await woxGet(`history?object_id=${uid}&date_from=${from}+00:00:00&date_to=${to}+23:59:59`);renderHistory(Array.isArray(data)?data:(data.data||[]));}catch(e){showToast('Error cargando historial');}finally{btn.disabled=false;btn.textContent='Ver Historial';}}
+function loadDemoData(){allUnits=[{id:1,name:'CRV BLANCA G5127',plate_number:'A123456',speed:0,lat:18.4860,lng:-69.9310,dt_tracker:'2026-04-09 08:00:00',online:1,move:0},{id:2,name:'F106 GUAGUA KIA A',plate_number:'C456789',speed:0,lat:18.5800,lng:-69.8700,dt_tracker:'2026-04-09 07:30:00',online:1,move:0},{id:3,name:'FORTUNER BLANCA',plate_number:'M789012',speed:15,lat:18.7350,lng:-70.1620,dt_tracker:'2026-04-09 08:05:00',online:1,move:1},{id:4,name:'G18',plate_number:'P001234',speed:0,lat:18.4500,lng:-70.0000,dt_tracker:'2026-04-08 09:02:00',online:0,move:0}];allAlerts=[{id:1,type:'speed',message:'FORTUNER BLANCA — 87 km/h en zona 60',time:'2026-04-09 07:50:00'},{id:2,type:'offline',message:'G18 — Sin reporte desde 12 horas',time:'2026-04-08 09:02:00'},{id:3,type:'geo',message:'CRV BLANCA — Salió de zona permitida',time:'2026-04-08 18:30:00'},{id:4,type:'online',message:'F106 GUAGUA — Reconectada',time:'2026-04-09 07:00:00'}];updateMapMarkers();renderUnits();renderAlerts();updateCounters();populateHistUnit();showToast('Modo demo — Proxy pendiente');}
+function getStatus(u){
+  // WOX devuelve: online (bool), move (bool), speed (num)
+  if(u.online===false||u.online===0||u.online===null||u.online===undefined) return 'offline';
+  if(u.move===true||u.move===1||(u.speed&&parseFloat(u.speed)>2)) return 'moving';
+  return 'stopped';
+}
+function filterUnits(f,el){currentFilter=f;document.querySelectorAll('#screen-units .filter-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderUnits();}
+function renderUnits(){const q=(document.getElementById('units-search').value||'').toLowerCase();const list=allUnits.filter(u=>{const st=getStatus(u);return(currentFilter==='all'||st===currentFilter)&&(!q||u.name.toLowerCase().includes(q)||(u.plate_number||'').toLowerCase().includes(q));});document.getElementById('units-count').textContent=`${allUnits.length} unidades`;const el=document.getElementById('units-list');if(!list.length){el.innerHTML=`<div class="units-empty"><div class="ico">🚗</div><p>No hay unidades con ese filtro</p></div>`;return;}const labels={moving:'En movimiento',stopped:'Detenida',offline:'Sin señal'};el.innerHTML=list.map(u=>{const st=getStatus(u);return `<div class="unit-card ${st}" onclick="focusUnit(${u.id})"><div class="unit-top"><div><div class="unit-name">${u.name}</div><div class="unit-plate">${u.plate_number||u.imei||'Sin placa'}</div></div><div class="unit-status ${st}">${labels[st]}</div></div><div class="unit-grid"><div class="unit-kv"><div class="unit-k">Velocidad</div><div class="unit-v speed-val">${parseFloat(u.speed||0).toFixed(0)} km/h</div></div><div class="unit-kv"><div class="unit-k">Protocolo</div><div class="unit-v">${u.protocol||'—'}</div></div></div><div class="unit-time">Vence: ${u.expiration_date?u.expiration_date.slice(0,10):'Sin fecha'}</div></div>`;}).join('');}
+function focusUnit(id){const u=allUnits.find(x=>x.id===id);if(!u||!u.lat)return;showScreen('map',document.querySelector('.botnav-item'));setTimeout(()=>{leafMap.setView([parseFloat(u.lat),parseFloat(u.lng)],15);if(markers[id])markers[id].openPopup();},200);}
+const ALERT_META={speed:{ico:'⚡',cls:'speed',label:'Exceso de velocidad'},offline:{ico:'📵',cls:'offline',label:'Unidad sin señal'},geo:{ico:'📍',cls:'geo',label:'Salida de geocerca'},online:{ico:'✅',cls:'online',label:'Unidad reconectada'}};
+function filterAlerts(f,el){currentAlertFilter=f;document.querySelectorAll('#screen-alerts .filter-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderAlerts();}
+function renderAlerts(){const list=currentAlertFilter==='all'?allAlerts:allAlerts.filter(a=>a.type===currentAlertFilter);document.getElementById('alerts-count').textContent=`${allAlerts.length} alertas`;const el=document.getElementById('alerts-list');if(!list.length){el.innerHTML=`<div class="no-alerts"><div class="ico">🔔</div><p>Sin alertas registradas</p></div>`;return;}el.innerHTML=list.map((a,i)=>{const m=ALERT_META[a.type]||{ico:'ℹ️',cls:'online',label:'Notificación'};return `<div class="alert-card"><div class="alert-icon ${m.cls}">${m.ico}</div><div class="alert-body"><div class="alert-title">${m.label}</div><div class="alert-desc">${a.message||a.description||''}</div><div class="alert-time">${formatTime(a.time||a.dt_tracker)}</div></div>${i<alertUnread?'<div class="alert-unread"></div>':''}</div>`;}).join('');}
+function populateHistUnit(){const sel=document.getElementById('hist-unit');sel.innerHTML='<option value="">— Seleccionar unidad —</option>'+allUnits.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');}
+function renderHistory(points){if(!points.length){showToast('Sin datos en ese período');return;}const el=document.getElementById('hist-map');el.style.display='block';if(!histMap){histMap=L.map('hist-map',{zoomControl:true,attributionControl:false});L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(histMap);}histMap.eachLayer(l=>{if(l instanceof L.Polyline||l instanceof L.Marker)histMap.removeLayer(l);});const coords=points.map(p=>[parseFloat(p.lat),parseFloat(p.lng)]);L.polyline(coords,{color:'#E07A0A',weight:4,opacity:0.85}).addTo(histMap);L.marker(coords[0]).addTo(histMap);L.marker(coords[coords.length-1]).addTo(histMap);histMap.fitBounds(coords,{padding:[20,20]});const dist=(points.reduce((a,_,i)=>i===0?a:a+haversine(points[i-1],points[i]),0)/1000).toFixed(1),maxSpd=Math.max(...points.map(p=>p.speed||0)),dur=Math.round((new Date(points[points.length-1].dt_tracker)-new Date(points[0].dt_tracker))/60000);document.getElementById('h-dist').textContent=dist+' km';document.getElementById('h-speed').textContent=maxSpd+' km/h';document.getElementById('h-time').textContent=dur+' min';document.getElementById('hist-summary').style.display='grid';setTimeout(()=>histMap.invalidateSize(),200);}
+function haversine(a,b){const R=6371000,dLat=rad(b.lat-a.lat),dLng=rad(b.lng-a.lng),x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+const rad=d=>d*Math.PI/180;
+function renderReport(){const el=document.getElementById('report-body');if(!reportData.length){showToast('Sin datos en ese período');return;}el.innerHTML=reportData.map(r=>`<tr><td class="report-name-cell">${r.name||'—'}</td><td>${r.plate_number||'—'}</td><td>${r.distance?(r.distance/1000).toFixed(1)+' km':'—'}</td><td>${r.max_speed||0} km/h</td><td>${r.stops||0}</td><td>${r.engine_hours?r.engine_hours+'h':'—'}</td></tr>`).join('');document.getElementById('report-content').style.display='block';}
+function exportCSV(){if(!reportData.length)return;const rows=[['Unidad','Placa','Distancia km','Vel max','Paradas','T motor']];reportData.forEach(r=>rows.push([r.name,r.plate_number,(r.distance/1000).toFixed(1),r.max_speed,r.stops,r.engine_hours]));const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));a.download=`reporte_wildtrack_${new Date().toISOString().slice(0,10)}.csv`;a.click();}
+function listenChat(){if(!currentUser)return;const ref=db.ref(`wox_portal/chat/${currentUser.uid}/messages`);ref.limitToLast(50).on('value',snap=>{const msgs=[];snap.forEach(c=>msgs.push({id:c.key,...c.val()}));renderChat(msgs);});ref.limitToLast(1).on('child_added',snap=>{const msg=snap.val();const cs=document.getElementById('screen-chat');if(msg.sender==='admin'&&!cs.classList.contains('active')){chatUnread++;updateChatBadge();}});}
+function renderChat(msgs){const el=document.getElementById('chat-messages');if(!msgs.length)return;el.innerHTML=msgs.map(m=>`<div class="chat-msg ${m.sender!=='admin'?'mine':'theirs'}"><div class="chat-bubble">${escHtml(m.text)}</div><div class="chat-time">${formatTime(m.timestamp)}</div></div>`).join('');el.scrollTop=el.scrollHeight;}
+async function sendMsg(){const input=document.getElementById('chat-input'),text=input.value.trim();if(!text||!currentUser)return;input.value='';await db.ref(`wox_portal/chat/${currentUser.uid}/messages`).push({text,sender:'client',timestamp:new Date().toISOString(),read:false});}
+function markChatRead(){if(!currentUser)return;db.ref(`wox_portal/chat/${currentUser.uid}/messages`).orderByChild('read').equalTo(false).once('value',snap=>snap.forEach(c=>{if(c.val().sender==='admin')c.ref.update({read:true});}));}
+function startPolling(){loadAlerts();pollTimer=setInterval(()=>{loadUnits();loadAlerts();},30000);}
+function refreshData(){const btn=document.getElementById('refresh-btn');btn.classList.add('spinning');loadUnits();loadAlerts();setTimeout(()=>btn.classList.remove('spinning'),1200);}
+function updateCounters(){document.getElementById('cnt-moving').textContent=allUnits.filter(u=>getStatus(u)==='moving').length;document.getElementById('cnt-stopped').textContent=allUnits.filter(u=>getStatus(u)==='stopped').length;document.getElementById('cnt-offline').textContent=allUnits.filter(u=>getStatus(u)==='offline').length;}
+function updateAlertBadge(){const b=document.getElementById('alert-badge');if(alertUnread>0){b.textContent=alertUnread;b.classList.add('show');}else b.classList.remove('show');}
+function updateChatBadge(){const b=document.getElementById('chat-badge-top');if(b){if(chatUnread>0)b.classList.add('show');else b.classList.remove('show');}}
+function formatTime(dt){if(!dt)return '—';try{const d=new Date(dt);return d.toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});}catch{return dt;}}
+function setDefaultDates(){const today=new Date().toISOString().slice(0,10),yday=new Date(Date.now()-86400000).toISOString().slice(0,10);['hist-from','hist-to','rep-from','rep-to'].forEach(id=>{document.getElementById(id).value=id.includes('to')?today:yday;});}
+function showToast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
+</script>
+</body>
+</html>
