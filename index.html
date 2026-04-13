@@ -2361,8 +2361,8 @@ function fetchAlerts() {
   document.getElementById('alert-list').innerHTML =
     '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px;">Cargando alertas...</div>';
 
-  fetch(TRACCAR_URL + '/api/events?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to), {
-    headers: { 'Authorization': window._traccarAuth || TRACCAR_AUTH }
+  fetch(TRACCAR_URL + '/api/reports/events?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to), {
+    headers: { 'Authorization': window._traccarAuth || TRACCAR_AUTH, 'Accept': 'application/json' }
   })
   .then(function(r){ return r.json(); })
   .then(function(events){
