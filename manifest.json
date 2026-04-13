@@ -2,7 +2,7 @@
   "name": "WILDTRACK GPS",
   "short_name": "WILDTRACK",
   "description": "Sistema de rastreo vehicular WILDTRACK",
-  "start_url": "/WILDTRACK/",
+  "start_url": "https://app.gpstracking.com.do/"
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a3d8f",
