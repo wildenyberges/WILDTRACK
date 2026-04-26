@@ -239,6 +239,8 @@ html,body{height:100vh;overflow:hidden;font-family:var(--font);background:var(--
 .sort-btn:hover{border-color:var(--navy);color:var(--navy)}
 .sort-btn.on{background:var(--navy);border-color:var(--navy);color:white}
 .sort-dir-btn{padding:4px 12px;border-radius:20px;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid var(--navy);color:white;background:var(--navy);font-family:var(--font);margin-left:auto;transition:all .15s}
+
+/* ── MAP LABELS ── */
 .wt-label{background:white!important;border:1.5px solid #dde6f0!important;border-radius:8px!important;padding:3px 8px!important;font-size:11px!important;font-weight:700!important;color:#1a3ab0!important;box-shadow:0 2px 8px rgba(26,61,143,0.12)!important;white-space:nowrap!important}
 .wt-label::before{border-top-color:#dde6f0!important}
 /* ── ANIMACIONES ── */
@@ -373,7 +375,7 @@ html,body{height:100vh;overflow:hidden;font-family:var(--font);background:var(--
       <div class="screen" id="scr-map">
         <div id="map"></div>
         <div id="map-info"><div class="mid"></div><span id="map-info-txt">En vivo</span></div>
-<button id="label-toggle-btn" onclick="toggleLabels()" style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:#e8f3fe;border:1.5px solid #4A9EF5;border-radius:10px;padding:8px 20px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;color:#2d7dd2;cursor:pointer;box-shadow:0 2px 12px rgba(26,61,143,0.15);white-space:nowrap">🏷 Ocultar etiquetas</button>
+        <button id="label-toggle-btn" onclick="toggleLabels()" style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:#e8f3fe;border:1.5px solid #4A9EF5;border-radius:10px;padding:8px 20px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;color:#2d7dd2;cursor:pointer;box-shadow:0 2px 12px rgba(26,61,143,0.15);white-space:nowrap">🏷 Ocultar etiquetas</button>
       </div>
 
       <!-- HISTORIAL -->
@@ -556,7 +558,7 @@ function makeIcon(status, course) {
   const ring = { moving:'#059669', idle:'#f59e0b', off:'#1e293b', offline:'#dc2626' };
   const rc = ring[status] || '#94a3b8';
   const rot = course || 0;
-  const html = '<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:3px solid ' + rc + ';display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="16" height="16" style="transform:rotate(' + rot + 'deg)"><path d="M12 3 L21 21 L12 15.5 L3 21 Z" fill="white"/></svg></div>';
+  const html = '<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:3px solid ' + rc + ';display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,61,143,0.25)"><svg viewBox="0 0 24 24" width="16" height="16" style="transform:rotate(' + rot + 'deg)"><path d="M12 3 L21 21 L12 15.5 L3 21 Z" fill="white"/></svg></div>';
   return L.divIcon({ html: html, className: '', iconSize: [34,34], iconAnchor: [17,17], popupAnchor: [0,-20] });
 }
 
@@ -571,7 +573,7 @@ function updateMarker(d, pos) {
   } else if (pos) {
     const m = L.marker([pos.latitude, pos.longitude], { icon })
       .addTo(S.map)
-      .bindTooltip(`<span style='font-family:Montserrat;font-size:11px;font-weight:700;color:#1a3ab0'>${esc(d.name)}</span>`, { permanent: S.showLabels !== false, direction: 'top', className: 'wt-label' });
+      .bindTooltip(`<b style="font-family:Montserrat;font-size:12px;font-weight:700;color:#1a3ab0">${esc(d.name)}</b><br><span style="font-size:10px;color:#64748b">${spd(pos.speed)} km/h · ${labels[status]}</span>`, { direction: 'top' });
     m.on('click', () => selectUnit(d.id));
     S.markers = S.markers || {};
     S.markers[d.id] = m;
