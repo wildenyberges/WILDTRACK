@@ -384,11 +384,17 @@
 <!-- CONTENT -->
 <div id="content">
   <div class="screen active" id="screen-units">
-    <div style="padding:10px 12px 4px;display:flex;gap:6px;align-items:center;">
-      <button class="filter-btn-content active" id="btn-all" onclick="setFilter('all')">Todas&nbsp;(<span id="count-all">0</span>)</button>
-      <button class="filter-btn-content" id="btn-online" onclick="setFilter('online')"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#059669;margin-right:5px;vertical-align:middle;animation:blink 2s infinite;"></span>Online&nbsp;<span id="count-online">0</span></button>
-      <button class="filter-btn-content" id="btn-offline" onclick="setFilter('offline')"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;margin-right:5px;vertical-align:middle;"></span>Offline&nbsp;<span id="count-offline">0</span></button>
-      <button id="btn-sort" onclick="toggleSort()" style="margin-left:auto;flex-shrink:0;background:white;border:1.5px solid #dde6f0;border-radius:20px;padding:6px 10px;font-size:13px;cursor:pointer;color:#2B4DE8;font-weight:700;"><span id="sort-icon">↑↓</span></button>
+    <div style="padding:8px 12px 4px;display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;justify-content:center;position:relative;">
+        <button class="filter-btn-content active" id="btn-all" onclick="setFilter('all')" style="padding:5px 18px;">Todas&nbsp;(<span id="count-all">0</span>)</button>
+        <button id="btn-sort" onclick="toggleSort()" style="position:absolute;right:0;background:white;border:1.5px solid #dde6f0;border-radius:20px;padding:5px 10px;font-size:13px;cursor:pointer;color:#2B4DE8;font-weight:700;"><span id="sort-icon">↑↓</span></button>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <button class="filter-btn-content" id="btn-moving" onclick="setFilter('moving')" style="flex:1;padding:5px 2px;font-size:10px;justify-content:center;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#059669;margin-right:4px;vertical-align:middle;animation:blink 2s infinite;"></span>Mov&nbsp;<span id="count-moving">0</span></button>
+        <button class="filter-btn-content" id="btn-stopped" onclick="setFilter('stopped')" style="flex:1;padding:5px 2px;font-size:10px;justify-content:center;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;margin-right:4px;vertical-align:middle;"></span>Det&nbsp;<span id="count-stopped">0</span></button>
+        <button class="filter-btn-content" id="btn-off" onclick="setFilter('off')" style="flex:1;padding:5px 2px;font-size:10px;justify-content:center;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#1e293b;margin-right:4px;vertical-align:middle;"></span>Apag&nbsp;<span id="count-off">0</span></button>
+        <button class="filter-btn-content" id="btn-nosignal" onclick="setFilter('nosignal')" style="flex:1;padding:5px 2px;font-size:10px;justify-content:center;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#dc2626;margin-right:4px;vertical-align:middle;"></span>S/Act&nbsp;<span id="count-nosignal">0</span></button>
+      </div>
     </div>
     <div style="padding:4px 12px 12px;"><div id="units-list"></div></div>
   </div>
@@ -556,7 +562,7 @@
       <button class="alert-mgr-close" onclick="closeAlertMgr()">✕</button>
     </div>
     <div id="alert-rules-list"></div>
-    <div style="padding:14px 20px;border-top:1px solid #dde6f0;margin-top:8px;">
+    <div style="display:none;padding:14px 20px;border-top:1px solid #dde6f0;margin-top:8px;">
       <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">EMAIL ALERTAS</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="email" id="alert-email-input" placeholder="correo@ejemplo.com" style="flex:1;font-family:Montserrat,sans-serif;font-size:13px;border:1.5px solid #dde6f0;border-radius:10px;padding:10px 12px;color:#1a3d8f;outline:none;">
@@ -774,7 +780,8 @@ function fetchTraccar() {
           status: d.status==='online'?'online':'offline', lat:p.latitude||18.9, lng:p.longitude||-70.3,
           speed: p.speed?Math.round(p.speed*1.852):0, heading:p.course||0, lastUpdate:p.deviceTime||p.fixTime||null,
           ignition: p.attributes?p.attributes.ignition:null };
-      });
+      }).filter(function(v){ return isOnHispaniola(v.lat, v.lng); });
+      adjustMapView();
       renderUnits();
       if (mapReady) syncMarkers();
       if (activeTab==='reports') renderReports();
@@ -816,13 +823,28 @@ function getMotionInfo(v) {
   return { cls:'off', label:'APAGADO', color:'#94a3b8' };
 }
 
+function isOnHispaniola(lat, lng) {
+  return lat >= 17.4 && lat <= 20.1 && lng >= -74.6 && lng <= -68.3;
+}
+function hasUnitsInHaiti() {
+  return vehicles.some(function(v){ return v.lat && v.lng && v.lng < -71.6 && isOnHispaniola(v.lat,v.lng); });
+}
+function adjustMapView() {
+  if (!map || !mapReady) return;
+  if (hasUnitsInHaiti()) {
+    map.fitBounds([[17.4,-74.6],[20.1,-68.3]],{padding:[20,20],animate:true});
+  } else {
+    map.fitBounds([[17.5,-72.0],[19.9,-68.3]],{padding:[20,20],animate:true});
+  }
+}
 function initMap() {
   if (mapReady) return;
-  map = L.map('map',{zoomControl:false,center:[18.9,-70.3],zoom:14});
+  map = L.map('map',{zoomControl:false,center:[18.9,-70.3],zoom:8});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
   L.control.zoom({position:'topright'}).addTo(map);
-  vehicles.forEach(function(v){ addMarker(v); });
+  vehicles.forEach(function(v){ if(isOnHispaniola(v.lat,v.lng)) addMarker(v); });
   mapReady = true;
+  adjustMapView();
 }
 
 function openMapAll() {
@@ -848,7 +870,7 @@ function ensureMap(focusId) {
     map.invalidateSize();
     var v = vehicles.find(function(x){ return x.id===focusId; });
     if (v) {
-      map.setView([v.lat,v.lng],17,{animate:false});
+      map.panTo([v.lat,v.lng],{animate:true});
       setTimeout(function(){ if (markers[v.id]) { markers[v.id].setLatLng([v.lat,v.lng]); markers[v.id].openPopup(); } },300);
     }
   },300);
@@ -908,9 +930,9 @@ function toggleSort() {
 
 function setFilter(f) {
   activeFilter=f;
-  document.getElementById('btn-all').classList.toggle('active',f==='all');
-  document.getElementById('btn-online').classList.toggle('active',f==='online');
-  document.getElementById('btn-offline').classList.toggle('active',f==='offline');
+  ['all','moving','stopped','off','nosignal'].forEach(function(k){
+    document.getElementById('btn-'+k).classList.toggle('active',f===k);
+  });
   renderUnits();
 }
 
@@ -918,12 +940,17 @@ function renderUnits() {
   const onCount = vehicles.filter(v=>v.status==='online').length;
   const offCount = vehicles.filter(v=>v.status!=='online').length;
   document.getElementById('count-all').textContent = vehicles.length;
-  document.getElementById('count-online').textContent = onCount;
-  document.getElementById('count-offline').textContent = offCount;
+  document.getElementById('count-moving').textContent   = vehicles.filter(v=>getMotionInfo(v).cls==='moving').length;
+  document.getElementById('count-stopped').textContent  = vehicles.filter(v=>getMotionInfo(v).cls==='stopped').length;
+  document.getElementById('count-off').textContent      = vehicles.filter(v=>getMotionInfo(v).cls==='off').length;
+  document.getElementById('count-nosignal').textContent = vehicles.filter(v=>getMotionInfo(v).cls==='nosignal').length;
   let filtered;
-  if (activeFilter==='all') filtered=[...vehicles].sort((a,b)=>sortOrder==='asc'?a.name.localeCompare(b.name):b.name.localeCompare(a.name));
-  else if (activeFilter==='online') filtered=vehicles.filter(v=>v.status==='online').sort((a,b)=>sortOrder==='asc'?b.speed-a.speed:a.speed-b.speed);
-  else filtered=vehicles.filter(v=>v.status!=='online').sort((a,b)=>sortOrder==='asc'?a.name.localeCompare(b.name):b.name.localeCompare(a.name));
+  const byAlpha  = (a,b) => sortOrder==='asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+  const byRecent = (a,b) => sortOrder==='asc'
+    ? (new Date(b.lastUpdate||0) - new Date(a.lastUpdate||0))
+    : (new Date(a.lastUpdate||0) - new Date(b.lastUpdate||0));
+  if (activeFilter==='all') filtered=[...vehicles].sort(byAlpha);
+  else filtered=vehicles.filter(v=>getMotionInfo(v).cls===activeFilter).sort(byRecent);
   document.getElementById('units-list').innerHTML = filtered.length===0
     ? `<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;font-weight:500;">${vehicles.length===0?'<div style="font-size:32px;margin-bottom:12px;">📡</div><div>Conectando con el servidor...</div>':'Sin unidades en este estado'}</div>`
     : filtered.map(v=>{
