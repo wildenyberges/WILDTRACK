@@ -781,7 +781,6 @@ function fetchTraccar() {
           speed: p.speed?Math.round(p.speed*1.852):0, heading:p.course||0, lastUpdate:p.deviceTime||p.fixTime||null,
           ignition: p.attributes?p.attributes.ignition:null };
       }).filter(function(v){ return isOnHispaniola(v.lat, v.lng); });
-      adjustMapView();
       renderUnits();
       if (mapReady) syncMarkers();
       if (activeTab==='reports') renderReports();
@@ -830,7 +829,7 @@ function hasUnitsInHaiti() {
   return vehicles.some(function(v){ return v.lat && v.lng && v.lng < -71.6 && isOnHispaniola(v.lat,v.lng); });
 }
 function adjustMapView() {
-  if (!map || !mapReady) return;
+  if (!map || !mapReady || mapMode!=='all') return;
   if (hasUnitsInHaiti()) {
     map.fitBounds([[17.4,-74.6],[20.1,-68.3]],{padding:[20,20],animate:true});
   } else {
@@ -854,7 +853,7 @@ function openMapAll() {
   initMap();
   setTimeout(function() {
     map.invalidateSize();
-    map.setView([18.9,-70.3],8,{animate:false});
+    adjustMapView();
     vehicles.forEach(function(v){ if (!markers[v.id]) return; markers[v.id].addTo(map); markers[v.id].openPopup(); });
   },250);
 }
@@ -870,7 +869,7 @@ function ensureMap(focusId) {
     map.invalidateSize();
     var v = vehicles.find(function(x){ return x.id===focusId; });
     if (v) {
-      map.panTo([v.lat,v.lng],{animate:true});
+      map.setView([v.lat,v.lng], Math.max(map.getZoom(), 15), {animate:true});
       setTimeout(function(){ if (markers[v.id]) { markers[v.id].setLatLng([v.lat,v.lng]); markers[v.id].openPopup(); } },300);
     }
   },300);
