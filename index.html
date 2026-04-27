@@ -114,6 +114,10 @@
     .unit-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
     .unit-dot.online { background:var(--green); animation:blink 2s infinite; }
     .unit-dot.offline { background:var(--silver); }
+    .unit-dot.moving   { background:#059669; animation:blink 2s infinite; }
+    .unit-dot.stopped  { background:#f59e0b; }
+    .unit-dot.off      { background:#1e293b; }
+    .unit-dot.nosignal { background:#dc2626; }
     .unit-info { flex:1; min-width:0; }
     .unit-name-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
     .unit-name { font-size:14px; font-weight:700; color:var(--navy); }
@@ -807,7 +811,7 @@ function getMotionInfo(v) {
   if (on)               return { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
   if (v.lastUpdate) {
     var minutos = Math.floor((Date.now()-new Date(v.lastUpdate).getTime())/60000);
-    if (minutos>10) return { cls:'nosignal', label:'OFFLINE', color:'#dc2626' };
+    if (minutos>60) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
   }
   return { cls:'off', label:'APAGADO', color:'#94a3b8' };
 }
@@ -853,8 +857,11 @@ function ensureMap(focusId) {
 // CAMBIO #9: anillo online más destacado con halo verde
 function makeIcon(v) {
   const on = v.status==='online';
-  const borderStyle = on ? '3px solid #059669' : '2px solid #94a3b8';
-  const shadowStyle = on ? '0 0 0 3px rgba(5,150,105,0.35), 0 4px 14px rgba(26,61,143,0.35)' : '0 4px 14px rgba(26,61,143,0.25)';
+  const mi = getMotionInfo(v);
+  const ringMap = { moving:{ border:'#059669', glow:'rgba(5,150,105,0.35)' }, stopped:{ border:'#f59e0b', glow:'rgba(245,158,11,0.35)' }, off:{ border:'#1e293b', glow:'rgba(30,41,59,0.25)' }, nosignal:{ border:'#dc2626', glow:'rgba(220,38,38,0.35)' } };
+  const rc = ringMap[mi.cls] || ringMap.off;
+  const borderStyle = '3px solid ' + rc.border;
+  const shadowStyle = '0 0 0 3px ' + rc.glow + ', 0 4px 14px rgba(26,61,143,0.35)';
   return L.divIcon({
     className:'',
     html:`<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:${borderStyle};box-shadow:${shadowStyle};display:flex;align-items:center;justify-content:center;">
@@ -922,7 +929,7 @@ function renderUnits() {
     : filtered.map(v=>{
         const on=v.status==='online'; const ago=timeAgo(v.lastUpdate); const mi2=getMotionInfo(v);
         return `<div class="unit-card ${selectedId===v.id?'selected':''}" onclick="openUnit(${v.id})">
-          <div class="unit-dot ${on?'online':'offline'}"></div>
+          <div class="unit-dot ${mi2.cls}"></div>
           <div class="unit-info">
             <div class="unit-name-row"><span class="unit-name">${v.name}</span><span class="unit-motion-badge ${mi2.cls}">${mi2.label}</span></div>
             <div class="unit-row"><span class="unit-speed">${on?v.speed:0} km/h</span><span style="color:var(--silver);font-size:11px;">·</span><span class="unit-time">⏱ ${ago}</span></div>
