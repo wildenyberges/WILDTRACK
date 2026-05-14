@@ -592,7 +592,7 @@
       <div class="picker-item" onclick="selectAlertType('ignitionOn','Ignición ON')">🔑 Ignición ON</div>
       <div class="picker-item" onclick="selectAlertType('ignitionOff','Ignición OFF')">🔒 Ignición OFF</div>
       <div class="picker-item" onclick="selectAlertType('speedLimitExceeded','Exceso de velocidad')">⚡ Exceso de velocidad</div>
-      <div class="picker-item" onclick="selectAlertType('deviceOffline','Sin señal')">📵 Sin señal</div>
+      <div class="picker-item" onclick="selectAlertType('deviceOffline','Sin actualizar')">📵 Sin actualizar</div>
       <div class="picker-item" onclick="selectAlertType('deviceOnline','Reconectado')">✅ Reconectado</div>
       <div class="picker-item" onclick="selectAlertType('geofenceExit','Salida de geocerca')">🚫 Salida de geocerca</div>
       <div class="picker-item" onclick="selectAlertType('geofenceEnter','Entrada a geocerca')">📍 Entrada a geocerca</div>
@@ -778,7 +778,7 @@ function fetchTraccar() {
         var p = posMap[d.id] || {};
         return { id:d.id, name:d.name, model:d.model||'—', owner:d.contact||'—', plate:d.uniqueId||'—', category:d.category||'—', phone:d.phone||'—',
           status: d.status==='online'?'online':'offline', lat:p.latitude||18.9, lng:p.longitude||-70.3,
-          speed: p.speed?Math.round(p.speed*1.852):0, heading:p.course||0, lastUpdate:p.deviceTime||p.fixTime||null,
+          speed: p.speed?Math.round(p.speed*1.852):0, heading:p.course||0, lastUpdate:p.serverTime||p.deviceTime||null, protocol:p.protocol||"",
           ignition: p.attributes?p.attributes.ignition:null };
       }).filter(function(v){ return isOnHispaniola(v.lat, v.lng); });
       renderUnits();
@@ -809,17 +809,25 @@ function timeAgo(isoStr) {
   return Math.floor(diff/86400)+' d';
 }
 
-// CAMBIO #8: 'SIN SEÑAL' → 'OFFLINE'
 function getMotionInfo(v) {
-  const on = v.status==='online';
-  if (on && v.speed>3)  return { cls:'moving',  label:'EN MOVIMIENTO',     color:'#2d7dd2' };
-  if (on && v.ignition===false) return { cls:'off', label:'APAGADO', color:'#94a3b8' };
-  if (on)               return { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
-  if (v.lastUpdate) {
-    var minutos = Math.floor((Date.now()-new Date(v.lastUpdate).getTime())/60000);
-    if (minutos>60) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
+  if (!v.lastUpdate) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
+  var age = (Date.now() - new Date(v.lastUpdate).getTime()) / 1000;
+  var proto = v.protocol || '';
+  if (proto === 'skypatrol') {
+    if (age > 120) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
+    return v.speed > 2 ? { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' }
+                       : { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
   }
-  return { cls:'off', label:'APAGADO', color:'#94a3b8' };
+  if (age > 600) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
+  if (age > 90)  return { cls:'off', label:'APAGADO', color:'#94a3b8' };
+  if (v.speed > 2) return { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' };
+  if (v.ignition === false) return { cls:'off', label:'APAGADO', color:'#94a3b8' };
+  return { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
+}
+
+function displaySpeed(v) {
+  var mi = getMotionInfo(v);
+  return (mi.cls === 'off' || mi.cls === 'nosignal') ? 0 : v.speed;
 }
 
 function isOnHispaniola(lat, lng) {
@@ -896,7 +904,7 @@ function makeIcon(v) {
 
 function makePopup(v) {
   const on = v.status==='online';
-  const spd = on?v.speed:0;
+  const spd = displaySpeed(v);
   const ago = timeAgo(v.lastUpdate);
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
     <span style="font-size:12px;font-weight:800;color:#2B4DE8;">${v.name}</span>
@@ -958,7 +966,7 @@ function renderUnits() {
           <div class="unit-dot ${mi2.cls}"></div>
           <div class="unit-info">
             <div class="unit-name-row"><span class="unit-name">${v.name}</span><span class="unit-motion-badge ${mi2.cls}">${mi2.label}</span></div>
-            <div class="unit-row"><span class="unit-speed">${on?v.speed:0} km/h</span><span style="color:var(--silver);font-size:11px;">·</span><span class="unit-time">⏱ ${ago}</span></div>
+            <div class="unit-row"><span class="unit-speed">${displaySpeed(v)} km/h</span><span style="color:var(--silver);font-size:11px;">·</span><span class="unit-time">⏱ ${ago}</span></div>
           </div><span class="unit-arrow">›</span></div>`;
       }).join('');
 }
@@ -1066,12 +1074,12 @@ function toggleAlertSound(){alertSoundOn=!alertSoundOn;var btn=document.getEleme
 
 function fetchAlerts(){var dateEl=document.getElementById('alert-date-input');var now=new Date();var tRD=new Date(now.getTime()-4*60*60*1000);if(!dateEl.value)dateEl.value=tRD.toISOString().slice(0,10);var base=dateEl.value;var from=base+'T04:00:00Z';var next=new Date(base+'T12:00:00Z');next.setUTCDate(next.getUTCDate()+1);var to=next.toISOString().slice(0,10)+'T03:59:59Z';var dateStr=new Date(base+'T12:00:00Z').toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long'});var lbl=document.getElementById('alert-date-lbl');if(lbl)lbl.textContent=dateStr;document.getElementById('alert-list').innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px;">Cargando alertas...</div>';fetch(TRACCAR_URL+'/api/reports/events?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to),{headers:{'Authorization':window._traccarAuth||TRACCAR_AUTH,'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(events){var hayNuevas=false;events.forEach(function(e){if(!lastAlertIds.has(e.id)){lastAlertIds.add(e.id);hayNuevas=true;fetch("/webhook",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(e)}).catch(function(){});}});if(hayNuevas&&alertSoundOn)playAlertPing();var filtered=events.filter(function(e){if(alertUnitFilter!==null&&e.deviceId!==alertUnitFilter)return false;if(alertTypeFilter!==null&&e.type!==alertTypeFilter)return false;return true;});buildAlertList(filtered);}).catch(function(){buildAlertList([]);});}
 
-function buildAlertList(events){var iconMap={'ignitionOn':{ico:'🔑',bg:'#d1fae5',lbl:'Ignición ON'},'ignitionOff':{ico:'🔒',bg:'#e2e8f0',lbl:'Ignición OFF'},'speedLimitExceeded':{ico:'⚡',bg:'#fef3c7',lbl:'Exceso de velocidad'},'geofenceExit':{ico:'🚫',bg:'#e0e7ff',lbl:'Salida de geocerca'},'geofenceEnter':{ico:'📍',bg:'#e0e7ff',lbl:'Entrada a geocerca'},'deviceOffline':{ico:'📵',bg:'#fee2e2',lbl:'Sin señal'},'deviceOnline':{ico:'✅',bg:'#d1fae5',lbl:'Reconectado'},'deviceStopped':{ico:'🔴',bg:'#fee2e2',lbl:'Vehículo Detenido'},'deviceMoving':{ico:'🟢',bg:'#d1fae5',lbl:'Vehículo en Movimiento'},'alarm':{ico:'🚨',bg:'#fee2e2',lbl:'Alarma'}};if(!events.length){document.getElementById('alert-list').innerHTML='<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">Sin alertas para hoy</div>';return;}document.getElementById('alert-list').innerHTML=events.reverse().map(function(e){var info=iconMap[e.type]||{ico:'🔔',bg:'#e0e7ff',lbl:e.type};var t=new Date(new Date(e.eventTime||e.serverTime).getTime()-4*60*60*1000);var hora=t.toISOString().slice(11,16);var v=vehicles.find(function(x){return x.id===e.deviceId;});var vName=v?v.name:'Unidad #'+e.deviceId;var extra='';if(e.type==='speedLimitExceeded'&&e.attributes&&e.attributes.speed)extra=' — '+Math.round(e.attributes.speed*1.852)+' km/h';return '<div class="alert-item"><div class="alert-ico" style="background:'+info.bg+'">'+info.ico+'</div><div class="alert-info"><div class="alert-title">'+info.lbl+'</div><div class="alert-desc">'+vName+extra+'</div><div class="alert-time">'+hora+'</div></div></div>';}).join('');}
+function buildAlertList(events){var iconMap={'ignitionOn':{ico:'🔑',bg:'#d1fae5',lbl:'Ignición ON'},'ignitionOff':{ico:'🔒',bg:'#e2e8f0',lbl:'Ignición OFF'},'speedLimitExceeded':{ico:'⚡',bg:'#fef3c7',lbl:'Exceso de velocidad'},'geofenceExit':{ico:'🚫',bg:'#e0e7ff',lbl:'Salida de geocerca'},'geofenceEnter':{ico:'📍',bg:'#e0e7ff',lbl:'Entrada a geocerca'},'deviceOffline':{ico:'📵',bg:'#fee2e2',lbl:'Sin actualizar'},'deviceOnline':{ico:'✅',bg:'#d1fae5',lbl:'Reconectado'},'deviceStopped':{ico:'🔴',bg:'#fee2e2',lbl:'Vehículo Detenido'},'deviceMoving':{ico:'🟢',bg:'#d1fae5',lbl:'Vehículo en Movimiento'},'alarm':{ico:'🚨',bg:'#fee2e2',lbl:'Alarma'}};if(!events.length){document.getElementById('alert-list').innerHTML='<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">Sin alertas para hoy</div>';return;}document.getElementById('alert-list').innerHTML=events.reverse().map(function(e){var info=iconMap[e.type]||{ico:'🔔',bg:'#e0e7ff',lbl:e.type};var t=new Date(new Date(e.eventTime||e.serverTime).getTime()-4*60*60*1000);var hora=t.toISOString().slice(11,16);var v=vehicles.find(function(x){return x.id===e.deviceId;});var vName=v?v.name:'Unidad #'+e.deviceId;var extra='';if(e.type==='speedLimitExceeded'&&e.attributes&&e.attributes.speed)extra=' — '+Math.round(e.attributes.speed*1.852)+' km/h';return '<div class="alert-item"><div class="alert-ico" style="background:'+info.bg+'">'+info.ico+'</div><div class="alert-info"><div class="alert-title">'+info.lbl+'</div><div class="alert-desc">'+vName+extra+'</div><div class="alert-time">'+hora+'</div></div></div>';}).join('');}
 
 function openAlertMgr(){var saved=localStorage.getItem('wt_alert_email')||'';var inp=document.getElementById('alert-email-input');if(inp)inp.value=saved;var st=document.getElementById('alert-email-status');if(st)st.textContent=saved?'Email guardado: '+saved:'';renderAlertRules();document.getElementById('alert-mgr-overlay').classList.add('open');}
 function saveAlertEmail(){var inp=document.getElementById('alert-email-input');var email=inp?inp.value.trim():'';var st=document.getElementById('alert-email-status');if(!email||!email.includes('@')){if(st){st.textContent='Ingresa un email válido';st.style.color='#dc2626';}return;}localStorage.setItem('wt_alert_email',email);if(st){st.textContent='✓ Guardado — recibirás alertas en '+email;st.style.color='#059669';}}
 function closeAlertMgr(){document.getElementById('alert-mgr-overlay').classList.remove('open');fetchAlerts();}
-function renderAlertRules(){var tipos=[{key:'ignition',ico:'🔑',name:'Ignición ON/OFF',desc:'Encendido y apagado',threshold:null},{key:'speed',ico:'⚡',name:'Exceso de Velocidad',desc:'Velocidad > '+alertConfig.speedLimit+' km/h',threshold:'speedLimit'},{key:'offline',ico:'📵',name:'Sin señal / Reconectado',desc:'Pérdida o recuperación de señal',threshold:null},{key:'geofence',ico:'📍',name:'Geocercas',desc:'Entrada o salida de zonas',threshold:null}];document.getElementById('alert-rules-list').innerHTML=tipos.map(function(t){var on=alertConfig[t.key];return '<div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #f0f4fa;"><span style="font-size:20px;">'+t.ico+'</span><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1a3d8f;">'+t.name+'</div><div style="font-size:10px;color:#64748b;">'+t.desc+'</div></div>'+(t.threshold?'<button onclick="editSpeedLimit()" style="border:none;background:#f0f4fa;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;color:#2B4DE8;cursor:pointer;">✏ '+alertConfig[t.threshold]+' km/h</button>':'')+'<button onclick="alertConfig[\''+t.key+'\']=!alertConfig[\''+t.key+'\'];renderAlertRules();" style="width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:'+(on?'#059669':'#dde6f0')+';position:relative;transition:background 0.2s;"><span style="position:absolute;top:2px;left:'+(on?'22px':'2px')+';width:20px;height:20px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s;"></span></button></div>';}).join('');}
+function renderAlertRules(){var tipos=[{key:'ignition',ico:'🔑',name:'Ignición ON/OFF',desc:'Encendido y apagado',threshold:null},{key:'speed',ico:'⚡',name:'Exceso de Velocidad',desc:'Velocidad > '+alertConfig.speedLimit+' km/h',threshold:'speedLimit'},{key:'offline',ico:'📵',name:'Sin actualizar / Reconectado',desc:'Pérdida o recuperación de señal',threshold:null},{key:'geofence',ico:'📍',name:'Geocercas',desc:'Entrada o salida de zonas',threshold:null}];document.getElementById('alert-rules-list').innerHTML=tipos.map(function(t){var on=alertConfig[t.key];return '<div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #f0f4fa;"><span style="font-size:20px;">'+t.ico+'</span><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1a3d8f;">'+t.name+'</div><div style="font-size:10px;color:#64748b;">'+t.desc+'</div></div>'+(t.threshold?'<button onclick="editSpeedLimit()" style="border:none;background:#f0f4fa;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;color:#2B4DE8;cursor:pointer;">✏ '+alertConfig[t.threshold]+' km/h</button>':'')+'<button onclick="alertConfig[\''+t.key+'\']=!alertConfig[\''+t.key+'\'];renderAlertRules();" style="width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:'+(on?'#059669':'#dde6f0')+';position:relative;transition:background 0.2s;"><span style="position:absolute;top:2px;left:'+(on?'22px':'2px')+';width:20px;height:20px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s;"></span></button></div>';}).join('');}
 function editSpeedLimit(){var val=prompt('Límite de velocidad (km/h):',alertConfig.speedLimit);if(val&&!isNaN(val)&&parseInt(val)>0){alertConfig.speedLimit=parseInt(val);renderAlertRules();}}
 
 // CHATBOT
@@ -1091,7 +1099,7 @@ function saveInsurancePhoto(inp){var id=_dsId?String(_dsId):'';if(!id||!inp.file
 function deleteInsurancePhoto(){var id=_dsId?String(_dsId):"";if(!id)return;localStorage.removeItem("wt_ins_"+id);showIns("");}
 function showIns(d){var el=document.getElementById('ds-insurance-preview');if(!el)return;el.innerHTML=d?'<img src="'+d+'" style="width:100%;height:100%;object-fit:cover;">':'&#x1F4C4;';}
 function openDetailSheet(id){var v=vehicles.find(function(x){return x.id===id;});if(!v||v.lat==null)return;_dsId=id;var on=v.status==='online';var mi=getMotionInfo(v);var s=document.getElementById('detail-sheet');document.getElementById('ds-name').textContent=v.name;document.getElementById('ds-imei').textContent='IMEI: '+(v.plate||id);var b=document.getElementById('ds-badge');b.textContent=mi.label;b.style.background=on?(v.speed>3?'#dbeafe':'#fef3c7'):'#e2e8f0';b.style.color=mi.color;refreshDS(v);loadPlan(v.plate||String(id));showIns(localStorage.getItem('wt_ins_'+String(id))||'');s.style.display='flex';s.classList.add('open');}
-function refreshDS(v){if(!v)return;var on=v.status==='online';document.getElementById('ds-spd').textContent=(on?v.speed:0)+' km/h';var st=document.getElementById('ds-st');st.textContent=on?'En linea':'Fuera';st.style.color=on?'#059669':'#94a3b8';document.getElementById('ds-ago').textContent=timeAgo(v.lastUpdate);document.getElementById('ds-lat').textContent=v.lat?v.lat.toFixed(5):'';document.getElementById('ds-lng').textContent=v.lng?v.lng.toFixed(5):'';if(v.lat!==_dsLat||v.lng!==_dsLng){_dsLat=v.lat;_dsLng=v.lng;document.getElementById('ds-address').textContent='Actualizando...';fetch('https://nominatim.openstreetmap.org/reverse?lat='+v.lat+'&lon='+v.lng+'&format=json&accept-language=es').then(function(r){return r.json();}).then(function(d){if(d&&d.address){var a=d.address;var p=[a.road||a.pedestrian||'',a.suburb||a.neighbourhood||'',a.city||a.town||a.village||''].filter(Boolean);document.getElementById('ds-address').textContent=p.join(', ')||d.display_name.split(',').slice(0,3).join(',');}else{document.getElementById('ds-address').textContent=v.lat.toFixed(5)+', '+v.lng.toFixed(5);}}).catch(function(){document.getElementById('ds-address').textContent=v.lat.toFixed(5)+', '+v.lng.toFixed(5);});}}
+function refreshDS(v){if(!v)return;var on=v.status==='online';document.getElementById('ds-spd').textContent=displaySpeed(v)+' km/h';var st=document.getElementById('ds-st');st.textContent=on?'En linea':'Fuera';st.style.color=on?'#059669':'#94a3b8';document.getElementById('ds-ago').textContent=timeAgo(v.lastUpdate);document.getElementById('ds-lat').textContent=v.lat?v.lat.toFixed(5):'';document.getElementById('ds-lng').textContent=v.lng?v.lng.toFixed(5):'';if(v.lat!==_dsLat||v.lng!==_dsLng){_dsLat=v.lat;_dsLng=v.lng;document.getElementById('ds-address').textContent='Actualizando...';fetch('https://nominatim.openstreetmap.org/reverse?lat='+v.lat+'&lon='+v.lng+'&format=json&accept-language=es').then(function(r){return r.json();}).then(function(d){if(d&&d.address){var a=d.address;var p=[a.road||a.pedestrian||'',a.suburb||a.neighbourhood||'',a.city||a.town||a.village||''].filter(Boolean);document.getElementById('ds-address').textContent=p.join(', ')||d.display_name.split(',').slice(0,3).join(',');}else{document.getElementById('ds-address').textContent=v.lat.toFixed(5)+', '+v.lng.toFixed(5);}}).catch(function(){document.getElementById('ds-address').textContent=v.lat.toFixed(5)+', '+v.lng.toFixed(5);});}}
 function closeDetailSheet(){var s=document.getElementById('detail-sheet');s.classList.remove('open');s.style.display='none';_dsId=null;_dsLat=null;_dsLng=null;}
 
 
