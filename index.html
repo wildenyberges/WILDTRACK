@@ -800,6 +800,7 @@ function syncMarkers() {
   });
 }
 
+function mapsUrl(lat,lng){return /iPhone|iPad|iPod/i.test(navigator.userAgent)?'https://maps.apple.com/?q='+lat+','+lng:'https://www.google.com/maps?q='+lat+','+lng;}
 function timeAgo(isoStr) {
   if (!isoStr) return '—';
   var diff = Math.floor((Date.now()-new Date(isoStr).getTime())/1000);
@@ -1025,7 +1026,7 @@ function loadHist(id) {
       var t=new Date(p3.deviceTime||p3.fixTime);
       var tRD=new Date(t.getTime()-4*60*60*1000);
       var spd=Math.round((p3.speed||0)*1.852);
-      return '<div class="hist-item"><div class="hist-time-col"><div class="hist-time">'+tRD.toISOString().slice(11,16)+'</div><div class="hist-date">'+tRD.toISOString().slice(8,10)+'/'+tRD.toISOString().slice(5,7)+'</div></div><div class="hist-sep"></div><div class="hist-info" style="flex:1;"><div class="hist-coords">'+p3.latitude.toFixed(5)+', '+p3.longitude.toFixed(5)+'</div><div class="hist-spd">'+spd+' km/h</div></div>'+(function(){var idx=window._histPins?window._histPins.length:0;if(!window._histPins)window._histPins=[];window._histPins.push({lat:p3.latitude,lng:p3.longitude,label:tRD.toISOString().slice(11,16)+' — '+spd+' km/h'});return '<button onclick="openMinimapIdx('+idx+')" style="font-size:20px;background:none;border:none;cursor:pointer;flex-shrink:0;padding-left:8px;">📍</button>';}())+'</div>';
+      return '<div class="hist-item"><div class="hist-time-col"><div class="hist-time">'+tRD.toISOString().slice(11,16)+'</div><div class="hist-date">'+tRD.toISOString().slice(8,10)+'/'+tRD.toISOString().slice(5,7)+'</div></div><div class="hist-sep"></div><div class="hist-info" style="flex:1;"><div class="hist-coords">'+p3.latitude.toFixed(5)+', '+p3.longitude.toFixed(5)+'</div><div class="hist-spd">'+spd+' km/h</div></div>'+(function(){var idx=window._histPins?window._histPins.length:0;if(!window._histPins)window._histPins=[];window._histPins.push({lat:p3.latitude,lng:p3.longitude,label:tRD.toISOString().slice(11,16)+' — '+spd+' km/h'});return '<button onclick="openMinimapIdx('+idx+')" style="font-size:20px;background:none;border:none;cursor:pointer;flex-shrink:0;padding-left:8px;">📍</button><a href="'+mapsUrl(p3.latitude,p3.longitude)+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none;flex-shrink:0;padding-left:6px;">🗺</a>';}())+'</div>';
     }).join('');
   })
   .catch(function(){document.getElementById('hist-list').innerHTML='<div style="text-align:center;padding:32px;color:#dc2626;font-size:13px;">Error al cargar historial</div>';});
