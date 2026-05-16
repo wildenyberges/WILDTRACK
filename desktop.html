@@ -542,7 +542,7 @@ function initMap() {
     maxZoom: 19
   });
   tileStadia.addTo(S.map);
-  L.control.layers({ 'Estándar (POI)': tileStadia, 'Detallado (Esri)': tileEsri }, {}, { position: 'topright', collapsed: false }).addTo(S.map);
+  L.control.layers({ 'Estándar (POI)': tileStadia, 'Detallado (Esri)': tileEsri }, {}, { position: 'topright', collapsed: true }).addTo(S.map);
   S.map.setView([18.74, -70.16], 9);
   // Agregar marcadores existentes
   S.devices.forEach(d => updateMarker(d, S.positions[d.id]));
@@ -854,7 +854,7 @@ function initHistMap() {
     attribution: '&copy; Esri &copy; OpenStreetMap', maxZoom: 19
   });
   hTileStadia.addTo(S.histMap);
-  L.control.layers({ 'Estándar (POI)': hTileStadia, 'Detallado (Esri)': hTileEsri }, {}, { position: 'topright', collapsed: false }).addTo(S.histMap);
+  L.control.layers({ 'Estándar (POI)': hTileStadia, 'Detallado (Esri)': hTileEsri }, {}, { position: 'topright', collapsed: true }).addTo(S.histMap);
   S.histMap.setView([18.74, -70.16], 9);
 }
 
