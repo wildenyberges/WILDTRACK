@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <!-- WILDTRACK Mobile v2.5 - 2026-06-13 - + filtro Haversine 50m para G18 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>WILDTRACK GPS</title>
   <link rel="manifest" href="manifest.json">
@@ -638,11 +639,10 @@
 </div>
 
 <script>
-const TRACCAR_URL = 'https://app.gpstracking.com.do';
-const TRACCAR_USER = 'wildenyberges@gpstracking.com.do';
-const TRACCAR_PASS = 'T@ngar0ja';
-var TRACCAR_AUTH = 'Basic ' + btoa(TRACCAR_USER + ':' + TRACCAR_PASS);
-window._traccarAuth = TRACCAR_AUTH;
+// v2.3 — Auth por sesión de Traccar (cookie), igual que desktop.html.
+// Sin credenciales embebidas. La app debe servirse en el MISMO origen que Traccar
+// (app.gpstracking.com.do) para que la cookie de sesión viaje con credentials:'include'.
+const TRACCAR_URL = '';  // mismo origen → rutas relativas /api/...
 
 let vehicles = [];
 let map = null, mapReady = false;
@@ -698,28 +698,28 @@ function doLogin() {
   if (!user || !pass) { errEl.textContent = 'Ingresa usuario y contraseña'; return; }
   errEl.textContent = '';
   btn.disabled = true; btn.textContent = 'Verificando...';
-  var auth = 'Basic ' + btoa(user + ':' + pass);
-  var loginDone = false;
-  function entrar() {
-    if (loginDone) return; loginDone = true;
-    window._traccarAuth = auth;
-    sessionStorage.setItem('wt_auth', auth);
-    sessionStorage.setItem('wt_user', user);
-    document.getElementById('login-screen').classList.add('hidden');
-    btn.disabled = false; btn.textContent = 'INGRESAR';
-    arrancar();
-  }
-  var timer = setTimeout(entrar, 4000);
-  fetch(TRACCAR_URL + '/api/devices', { headers: { 'Authorization': auth } })
+  var body = new URLSearchParams({ email: user, password: pass });
+  fetch(TRACCAR_URL + '/api/session', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
+  })
   .then(function(r) {
-    clearTimeout(timer);
-    if (r.status === 401) {
-      loginDone = true;
+    if (!r.ok) {
       errEl.textContent = 'Usuario o contraseña incorrectos';
       btn.disabled = false; btn.textContent = 'INGRESAR';
-    } else { entrar(); }
+      return;
+    }
+    return r.json().then(function(u) {
+      sessionStorage.setItem('wt_user', user);
+      document.getElementById('login-screen').classList.add('hidden');
+      btn.disabled = false; btn.textContent = 'INGRESAR';
+      arrancar();
+    });
   })
-  .catch(function() { clearTimeout(timer); entrar(); });
+  .catch(function() {
+    errEl.textContent = 'Error de conexión. Reintenta.';
+    btn.disabled = false; btn.textContent = 'INGRESAR';
+  });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -748,15 +748,20 @@ function arrancar() {
 }
 
 window.addEventListener('load', function() {
-  var savedAuth = sessionStorage.getItem('wt_auth');
-  var savedUser = sessionStorage.getItem('wt_user');
-  if (savedAuth) {
-    window._traccarAuth = savedAuth;
-    document.getElementById('login-screen').classList.add('hidden');
-    var userEl = document.getElementById('top-username');
-    if (userEl && savedUser) userEl.textContent = '👤 ' + savedUser.split('@')[0];
-    arrancar();
-  }
+  // Verifica si ya hay sesión válida en Traccar (cookie). No confía en sessionStorage.
+  fetch(TRACCAR_URL + '/api/session', { credentials: 'include', headers: { 'Accept': 'application/json' } })
+  .then(function(r) {
+    if (!r.ok) return;  // sin sesión → se queda en login
+    return r.json().then(function(u) {
+      var savedUser = (u && u.email) || sessionStorage.getItem('wt_user') || '';
+      if (savedUser) sessionStorage.setItem('wt_user', savedUser);
+      document.getElementById('login-screen').classList.add('hidden');
+      var userEl = document.getElementById('top-username');
+      if (userEl && savedUser) userEl.textContent = '👤 ' + savedUser.split('@')[0];
+      arrancar();
+    });
+  })
+  .catch(function(){});
 });
 
 function hideSplash() {
@@ -765,15 +770,28 @@ function hideSplash() {
   setTimeout(function(){ s.style.display='none'; }, 500);
 }
 
+
+// Filtro G18 — 50 metros (usa haversineKm existente)
+var G18_LAST = {};
+function applyG18Filter(p, device) {
+  if (!device || !device.attributes || device.attributes.model !== "G18") return true;
+  var prev = G18_LAST[p.deviceId];
+  if (!prev) { G18_LAST[p.deviceId] = p; return true; }
+  var dist = haversineKm(prev.latitude, prev.longitude, p.latitude, p.longitude) * 1000;
+  if (dist < 50) return false;
+  G18_LAST[p.deviceId] = p;
+  return true;
+}
+
 function fetchTraccar() {
-  return fetch(TRACCAR_URL + '/api/devices', { headers: { 'Authorization': window._traccarAuth || TRACCAR_AUTH } })
+  return fetch(TRACCAR_URL + '/api/devices', { credentials: 'include' })
   .then(function(r){ return r.json(); })
   .then(function(devices) {
-    return fetch(TRACCAR_URL + '/api/positions', { headers: { 'Authorization': window._traccarAuth || TRACCAR_AUTH } })
+    return fetch(TRACCAR_URL + '/api/positions', { credentials: 'include' })
     .then(function(r){ return r.json(); })
     .then(function(positions) {
       var posMap = {};
-      positions.forEach(function(p){ posMap[p.deviceId] = p; });
+      positions.filter(function(p){ var dev = devices.find(function(d){ return d.id === p.deviceId; }); return applyG18Filter(p, dev); }).forEach(function(p){ posMap[p.deviceId] = p; });
       vehicles = devices.map(function(d) {
         var p = posMap[d.id] || {};
         return { id:d.id, name:d.name, model:d.model||'—', owner:d.contact||'—', plate:d.uniqueId||'—', category:d.category||'—', phone:d.phone||'—',
@@ -819,7 +837,7 @@ function getMotionInfo(v) {
     return v.speed > 2 ? { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' }
                        : { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
   }
-  if (age > 600) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
+  if (age > 2700) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' }; // 45 min = 3 reportes de apagado (15 min) fallidos
   if (age > 90)  return { cls:'off', label:'APAGADO', color:'#94a3b8' };
   if (v.speed > 2) return { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' };
   if (v.ignition === false) return { cls:'off', label:'APAGADO', color:'#94a3b8' };
@@ -1007,7 +1025,7 @@ function loadHist(id) {
   var toUTC=new Date(dateBase+'T04:00:00Z'); toUTC.setUTCHours(p.hTo+4,p.mTo,p.sTo,0);
   document.getElementById('hist-list').innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px;">Cargando...</div>';
   document.getElementById('btn-recorridos').classList.add('visible');
-  fetch(TRACCAR_URL+'/api/positions?deviceId='+histId+'&from='+encodeURIComponent(fromUTC.toISOString())+'&to='+encodeURIComponent(toUTC.toISOString()),{headers:{'Authorization':window._traccarAuth||TRACCAR_AUTH}})
+  fetch(TRACCAR_URL+'/api/positions?deviceId='+histId+'&from='+encodeURIComponent(fromUTC.toISOString())+'&to='+encodeURIComponent(toUTC.toISOString()),{credentials:'include'})
   .then(function(r){return r.json();})
   .then(function(positions){
     var filtered2=[]; var repeatCount=0; var lastLat=null,lastLng=null;
@@ -1038,7 +1056,7 @@ function saveFuelConfig(){localStorage.setItem('wt_fuel',JSON.stringify(fuelConf
 function setRepPeriod(h,el){repPeriodH=h;document.querySelectorAll('.rep-period-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');repPositionsCache=null;['consumo','distancia','paradas'].forEach(function(k){rep3Open[k]=false;var body=document.getElementById('rep3-'+k+'-body');var card=document.getElementById('rep3-'+k);if(body)body.style.display='none';if(card)card.classList.remove('open');});}
 function toggleRep3(key){var body=document.getElementById('rep3-'+key+'-body');var card=document.getElementById('rep3-'+key);rep3Open[key]=!rep3Open[key];if(rep3Open[key]){body.style.display='block';card.classList.add('open');loadRep3(key);}else{body.style.display='none';card.classList.remove('open');}}
 function getRepFromTo(){var now=new Date();var from=new Date(now.getTime()-repPeriodH*3600*1000);return{from:from.toISOString(),to:now.toISOString()};}
-function loadRep3(key){var sel=document.getElementById('rep-unit-sel');var vid=sel?parseInt(sel.value):0;if(!vid){setRep3Content(key,'<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">Selecciona una unidad primero</div>');return;}var v=vehicles.find(function(x){return x.id===vid;});if(!v)return;if(repPositionsCache&&repPositionsCache.vid===vid&&repPositionsCache.period===repPeriodH){processRep3(key,v,repPositionsCache.positions);return;}setRep3Content(key,'<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">Cargando...</div>');var range=getRepFromTo();fetch(TRACCAR_URL+'/api/positions?deviceId='+vid+'&from='+encodeURIComponent(range.from)+'&to='+encodeURIComponent(range.to),{headers:{'Authorization':window._traccarAuth||TRACCAR_AUTH}}).then(function(r){return r.json();}).then(function(positions){repPositionsCache={vid:vid,period:repPeriodH,positions:positions};processRep3(key,v,positions);}).catch(function(){setRep3Content(key,'<div style="text-align:center;padding:16px;color:#dc2626;font-size:12px;">Error al cargar datos</div>');});}
+function loadRep3(key){var sel=document.getElementById('rep-unit-sel');var vid=sel?parseInt(sel.value):0;if(!vid){setRep3Content(key,'<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">Selecciona una unidad primero</div>');return;}var v=vehicles.find(function(x){return x.id===vid;});if(!v)return;if(repPositionsCache&&repPositionsCache.vid===vid&&repPositionsCache.period===repPeriodH){processRep3(key,v,repPositionsCache.positions);return;}setRep3Content(key,'<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">Cargando...</div>');var range=getRepFromTo();fetch(TRACCAR_URL+'/api/positions?deviceId='+vid+'&from='+encodeURIComponent(range.from)+'&to='+encodeURIComponent(range.to),{credentials:'include'}).then(function(r){return r.json();}).then(function(positions){repPositionsCache={vid:vid,period:repPeriodH,positions:positions};processRep3(key,v,positions);}).catch(function(){setRep3Content(key,'<div style="text-align:center;padding:16px;color:#dc2626;font-size:12px;">Error al cargar datos</div>');});}
 function setRep3Content(key,html2){var body=document.getElementById('rep3-'+key+'-body');if(body)body.innerHTML=html2;}
 function processRep3(key,v,positions){if(key==='distancia')renderRep3Distancia(v,positions);else if(key==='consumo')renderRep3Consumo(v,positions);else if(key==='paradas')renderRep3Paradas(v,positions);}
 
@@ -1073,7 +1091,7 @@ function selectAlertType(type,name){alertTypeFilter=type;document.getElementById
 
 function toggleAlertSound(){alertSoundOn=!alertSoundOn;var btn=document.getElementById('btn-sound');if(btn){btn.textContent=alertSoundOn?'🔔':'🔕';btn.className='alert-fab '+(alertSoundOn?'sound-on':'sound-off');}if(alertSoundOn){initAlertAudio();playAlertPing();}}
 
-function fetchAlerts(){var dateEl=document.getElementById('alert-date-input');var now=new Date();var tRD=new Date(now.getTime()-4*60*60*1000);if(!dateEl.value)dateEl.value=tRD.toISOString().slice(0,10);var base=dateEl.value;var from=base+'T04:00:00Z';var next=new Date(base+'T12:00:00Z');next.setUTCDate(next.getUTCDate()+1);var to=next.toISOString().slice(0,10)+'T03:59:59Z';var dateStr=new Date(base+'T12:00:00Z').toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long'});var lbl=document.getElementById('alert-date-lbl');if(lbl)lbl.textContent=dateStr;document.getElementById('alert-list').innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px;">Cargando alertas...</div>';fetch(TRACCAR_URL+'/api/reports/events?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to),{headers:{'Authorization':window._traccarAuth||TRACCAR_AUTH,'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(events){var hayNuevas=false;events.forEach(function(e){if(!lastAlertIds.has(e.id)){lastAlertIds.add(e.id);hayNuevas=true;fetch("/webhook",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(e)}).catch(function(){});}});if(hayNuevas&&alertSoundOn)playAlertPing();var filtered=events.filter(function(e){if(alertUnitFilter!==null&&e.deviceId!==alertUnitFilter)return false;if(alertTypeFilter!==null&&e.type!==alertTypeFilter)return false;return true;});buildAlertList(filtered);}).catch(function(){buildAlertList([]);});}
+function fetchAlerts(){var dateEl=document.getElementById('alert-date-input');var now=new Date();var tRD=new Date(now.getTime()-4*60*60*1000);if(!dateEl.value)dateEl.value=tRD.toISOString().slice(0,10);var base=dateEl.value;var from=base+'T04:00:00Z';var next=new Date(base+'T12:00:00Z');next.setUTCDate(next.getUTCDate()+1);var to=next.toISOString().slice(0,10)+'T03:59:59Z';var dateStr=new Date(base+'T12:00:00Z').toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long'});var lbl=document.getElementById('alert-date-lbl');if(lbl)lbl.textContent=dateStr;document.getElementById('alert-list').innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px;">Cargando alertas...</div>';fetch(TRACCAR_URL+'/api/reports/events?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to),{credentials:'include',headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(events){var hayNuevas=false;events.forEach(function(e){if(!lastAlertIds.has(e.id)){lastAlertIds.add(e.id);hayNuevas=true;fetch("/webhook",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(e)}).catch(function(){});}});if(hayNuevas&&alertSoundOn)playAlertPing();var filtered=events.filter(function(e){if(alertUnitFilter!==null&&e.deviceId!==alertUnitFilter)return false;if(alertTypeFilter!==null&&e.type!==alertTypeFilter)return false;return true;});buildAlertList(filtered);}).catch(function(){buildAlertList([]);});}
 
 function buildAlertList(events){var iconMap={'ignitionOn':{ico:'🔑',bg:'#d1fae5',lbl:'Ignición ON'},'ignitionOff':{ico:'🔒',bg:'#e2e8f0',lbl:'Ignición OFF'},'speedLimitExceeded':{ico:'⚡',bg:'#fef3c7',lbl:'Exceso de velocidad'},'geofenceExit':{ico:'🚫',bg:'#e0e7ff',lbl:'Salida de geocerca'},'geofenceEnter':{ico:'📍',bg:'#e0e7ff',lbl:'Entrada a geocerca'},'deviceOffline':{ico:'📵',bg:'#fee2e2',lbl:'Sin actualizar'},'deviceOnline':{ico:'✅',bg:'#d1fae5',lbl:'Reconectado'},'deviceStopped':{ico:'🔴',bg:'#fee2e2',lbl:'Vehículo Detenido'},'deviceMoving':{ico:'🟢',bg:'#d1fae5',lbl:'Vehículo en Movimiento'},'alarm':{ico:'🚨',bg:'#fee2e2',lbl:'Alarma'}};if(!events.length){document.getElementById('alert-list').innerHTML='<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">Sin alertas para hoy</div>';return;}document.getElementById('alert-list').innerHTML=events.reverse().map(function(e){var info=iconMap[e.type]||{ico:'🔔',bg:'#e0e7ff',lbl:e.type};var t=new Date(new Date(e.eventTime||e.serverTime).getTime()-4*60*60*1000);var hora=t.toISOString().slice(11,16);var v=vehicles.find(function(x){return x.id===e.deviceId;});var vName=v?v.name:'Unidad #'+e.deviceId;var extra='';if(e.type==='speedLimitExceeded'&&e.attributes&&e.attributes.speed)extra=' — '+Math.round(e.attributes.speed*1.852)+' km/h';return '<div class="alert-item"><div class="alert-ico" style="background:'+info.bg+'">'+info.ico+'</div><div class="alert-info"><div class="alert-title">'+info.lbl+'</div><div class="alert-desc">'+vName+extra+'</div><div class="alert-time">'+hora+'</div></div></div>';}).join('');}
 
@@ -1088,7 +1106,7 @@ function openChatbot(){document.getElementById('chatbot-overlay').classList.add(
 function closeChatbot(){document.getElementById('chatbot-overlay').classList.remove('open');}
 function closeChatbotOutside(e){if(e.target.id==='chatbot-overlay')closeChatbot();}
 function contactarWhatsApp(){window.open('https://wa.me/18095437884?text=Hola%20Wildtrack%2C%20necesito%20informaci%C3%B3n%20sobre%20mi%20flota.','_blank');}
-function cerrarSesion(){if(confirm('¿Deseas cerrar sesión?')){sessionStorage.removeItem('wt_auth');sessionStorage.removeItem('wt_user');window._traccarAuth=TRACCAR_AUTH;document.getElementById('login-screen').classList.remove('hidden');document.getElementById('login-pass').value='';document.getElementById('login-error').textContent='';}}
+function cerrarSesion(){if(confirm('¿Deseas cerrar sesión?')){fetch(TRACCAR_URL+'/api/session',{method:'DELETE',credentials:'include'}).catch(function(){}).then(function(){sessionStorage.removeItem('wt_user');location.reload();});}}
 
 // DETAIL SHEET
 var WT_FB='https://wildtrack-gps-default-rtdb.firebaseio.com';
