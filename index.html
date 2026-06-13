@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <!-- WILDTRACK Mobile v2.6 - 2026-06-13 - + throttle Nominatim 1.1s entre peticiones -->
+  <!-- WILDTRACK Mobile v2.6.1 - 2026-06-13 - fix: } faltante en renderRep3Paradas -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>WILDTRACK GPS</title>
   <link rel="manifest" href="manifest.json">
@@ -1083,6 +1083,7 @@ function renderRep3Paradas(v,positions){if(!positions||positions.length<2){setRe
   }
   next(0);
 })();
+}
 
 function updateFuelConfig(id){var inputEl=document.getElementById('rc-'+id)||document.getElementById('fc-'+id);if(!inputEl)return;var val=parseFloat(inputEl.value);if(isNaN(val)||val<=0)return;fuelConfig[id]=val;saveFuelConfig();if(repPositionsCache&&repPositionsCache.vid===id){var v=vehicles.find(function(x){return x.id===id;});if(v)renderRep3Consumo(v,repPositionsCache.positions);}}
 
