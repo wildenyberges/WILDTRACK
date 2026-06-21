@@ -1,3 +1,5 @@
+const CACHE_VERSION = 'v2.8.1';
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
   e.waitUntil(
