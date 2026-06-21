@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <!-- WILDTRACK Mobile v2.7 - 2026-06-16 - fix: alertas con deviceId explicito por unidad (post-migracion Contabo) -->
+  <!-- WILDTRACK Mobile v2.8.1 - SIN ACTUALIZAR incluye status unknown Traccar --> v2.7 - 2026-06-16 - fix: alertas con deviceId explicito por unidad (post-migracion Contabo) -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>WILDTRACK GPS</title>
   <link rel="manifest" href="manifest.json">
@@ -829,15 +829,15 @@ function timeAgo(isoStr) {
 }
 
 function getMotionInfo(v) {
+  // SIN ACTUALIZAR: prioridad absoluta — usa estado offline/unknown de Traccar, no umbral de tiempo
+  if (v.status === 'offline' || v.status === 'unknown') return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
   if (!v.lastUpdate) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
   var age = (Date.now() - new Date(v.lastUpdate).getTime()) / 1000;
   var proto = v.protocol || '';
   if (proto === 'skypatrol') {
-    if (age > 120) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' };
     return v.speed > 2 ? { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' }
                        : { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
   }
-  if (age > 2700) return { cls:'nosignal', label:'SIN ACTUALIZAR', color:'#dc2626' }; // 45 min = 3 reportes de apagado (15 min) fallidos
   if (age > 90)  return { cls:'off', label:'APAGADO', color:'#94a3b8' };
   if (v.speed > 2) return { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' };
   if (v.ignition === false) return { cls:'off', label:'APAGADO', color:'#94a3b8' };
