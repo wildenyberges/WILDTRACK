@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- WILDTRACK Desktop v1.9 - 2026-06-13 - umbral SIN ACTUALIZAR 2700s (45 min) -->
+<!-- WILDTRACK Desktop v2.0.1 - SIN ACTUALIZAR incluye status unknown Traccar -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WILDTRACK GPS — Panel de Control</title>
@@ -721,12 +721,13 @@ function initMap(){
   fitAll();
 }
 
-function getStatus(pos){
+function getStatus(pos,dev){
+  // SIN ACTUALIZAR: prioridad absoluta — usa estado offline/unknown de Traccar, no umbral de tiempo
+  if(dev&&(dev.status==='offline'||dev.status==='unknown'))return'no_update';
   if(!pos)return'no_update';
   const age=(Date.now()-new Date(pos.serverTime).getTime())/1000;
   const proto=pos.protocol||'';
-  if(proto==='skypatrol'){if(age>120)return'no_update';return((pos.speed||0)*1.852)>2?'moving':'idle';}
-  if(age>2700)return'no_update'; // 45 min = 3 reportes apagado (15 min) fallidos
+  if(proto==='skypatrol'){return((pos.speed||0)*1.852)>2?'moving':'idle';}
   if(age>90)return'off';
   if(((pos.speed||0)*1.852)>2)return'moving';
   const ign=pos.attributes&&pos.attributes.ignition;
@@ -749,7 +750,7 @@ function mapsPin(lat,lng){
 function markerTooltipHtml(d,pos,permanent){
   if(!pos)return esc(d.name);
   const pin=mapsPin(pos.latitude,pos.longitude);
-  const status=getStatus(pos);
+  const status=getStatus(pos,d);
   const lbl={moving:'En movimiento',idle:'Detenido',off:'Apagado',no_update:'Sin actualización'};
   if(permanent){
     return'<span style="font-family:Montserrat;font-size:11px;font-weight:700;color:#1a3ab0">'+esc(d.name)+'</span>'+pin;
@@ -759,7 +760,7 @@ function markerTooltipHtml(d,pos,permanent){
 
 function updateMarker(d,pos){
   if(!S.mapInited||!S.map)return;
-  const status=getStatus(pos);
+  const status=getStatus(pos,d);
   const icon=makeIcon(status,pos?.course);
   if(S.markers[d.id]){
     if(pos)S.markers[d.id].setLatLng([pos.latitude,pos.longitude]);
@@ -780,7 +781,7 @@ function updateMarker(d,pos){
     m.on('click',()=>selectUnit(d.id));
     S.markers[d.id]=m;
   }
-  if(S.markers[d.id])applyMarkerVisibility(d.id,getStatus(S.positions[d.id]));
+  if(S.markers[d.id])applyMarkerVisibility(d.id,getStatus(S.positions[d.id],d));
 }
 
 function applyMarkerVisibility(id,status){
@@ -792,8 +793,8 @@ function applyMarkerVisibility(id,status){
 
 function applyAllMarkersVisibility(){
   if(!S.mapInited)return;
-  S.devices.forEach(d=>applyMarkerVisibility(d.id,getStatus(S.positions[d.id])));
-  const visible=S.devices.filter(d=>{const st=getStatus(S.positions[d.id]);return(S.filter==='all'||S.filter===st)&&S.positions[d.id];});
+  S.devices.forEach(d=>applyMarkerVisibility(d.id,getStatus(S.positions[d.id],d)));
+  const visible=S.devices.filter(d=>{const st=getStatus(S.positions[d.id],d);return(S.filter==='all'||S.filter===st)&&S.positions[d.id];});
   if(visible.length&&S.map){
     const pts=visible.map(d=>[S.positions[d.id].latitude,S.positions[d.id].longitude]);
     if(pts.length===1)S.map.setView(pts[0],14);
@@ -889,7 +890,7 @@ function renderStdSidebar(){
   let units=S.devices.filter(d=>{
     if(q&&!d.name.toLowerCase().includes(q))return false;
     if(S.filter==='all')return true;
-    return getStatus(S.positions[d.id])===S.filter;
+    return getStatus(S.positions[d.id],d)===S.filter;
   });
   if(S.sortBy==='alpha')units.sort((a,b)=>S.sortAsc?a.name.localeCompare(b.name):b.name.localeCompare(a.name));
   else units.sort((a,b)=>{const ta=S.positions[a.id]?new Date(S.positions[a.id].serverTime).getTime():0,tb=S.positions[b.id]?new Date(S.positions[b.id].serverTime).getTime():0;return S.sortAsc?tb-ta:ta-tb;});
@@ -898,7 +899,7 @@ function renderStdSidebar(){
   if(!units.length){list.innerHTML='<div class="sb-empty">Sin resultados</div>';return;}
   const labels={moving:'En movimiento',idle:'Detenido encendido',off:'Apagado',no_update:'Sin actualización'};
   list.innerHTML=units.map(d=>{
-    const p=S.positions[d.id];const st=getStatus(p);
+    const p=S.positions[d.id];const st=getStatus(p,d);
     return'<div class="uc'+(d.id===S.selectedId?' sel':'')+'" onclick="selectUnit('+d.id+')"><div class="uc-dot '+st+'"></div><div class="uc-info"><div class="uc-name">'+esc(d.name)+'</div><div class="uc-row"><span class="uc-badge '+st+'">'+(labels[st]||st)+'</span><span class="uc-spd">'+(p?spd(p.speed)+' km/h':'—')+'</span><span class="uc-ago">'+(p?timeAgo(new Date(p.serverTime)):'—')+'</span></div></div><div class="uc-arr">›</div></div>';
   }).join('');
 }
@@ -918,7 +919,7 @@ function renderMapSidebar(){
   // Filter
   const q=(document.getElementById('sbm-q')?.value||'').trim().toLowerCase();
   let units=S.devices.filter(d=>{
-    const matches=af==='all'||getStatus(S.positions[d.id])===af;
+    const matches=af==='all'||getStatus(S.positions[d.id],d)===af;
     if(!matches)return false;
     if(q&&!d.name.toLowerCase().includes(q))return false;
     return true;
@@ -932,7 +933,7 @@ function renderMapSidebar(){
   if(!units.length){list.innerHTML='<div class="dcol-empty">Sin unidades en este estado</div>';return;}
   const stC={moving:'var(--green)',idle:'var(--orange)',off:'var(--muted)',no_update:'var(--red)'};
   list.innerHTML=units.map(d=>{
-    const p=S.positions[d.id];const st=getStatus(p);
+    const p=S.positions[d.id];const st=getStatus(p,d);
     const dotC=stC[st]||'var(--silver)';
     const anim=st==='moving'?';animation:blink 2s infinite':'';
     const spdTxt=(st==='moving'&&p)?'<span class="dv-spd">'+spd(p.speed)+' km/h</span>':'';
@@ -1039,7 +1040,7 @@ function updateDashboard(){
   const wEl=document.getElementById('dash-welcome');
   if(wEl&&S.user)wEl.textContent=(S.user.name||S.user.email).split('@')[0].split(' ')[0];
   let total=0,moving=0,idle=0,off=0,no_update=0;
-  S.devices.forEach(d=>{total++;const st=getStatus(S.positions[d.id]);if(st==='moving')moving++;else if(st==='idle')idle++;else if(st==='off')off++;else no_update++;});
+  S.devices.forEach(d=>{total++;const st=getStatus(S.positions[d.id],d);if(st==='moving')moving++;else if(st==='idle')idle++;else if(st==='off')off++;else no_update++;});
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('dc-all',total);set('dc-moving',moving);set('dc-idle',idle);set('dc-off',off);set('dc-no_update',no_update);
   renderColumns();
@@ -1056,7 +1057,7 @@ function setColSort(col,by,btn){
 }
 function toggleColDir(col,btn){S.colSort[col].asc=!S.colSort[col].asc;btn.textContent=S.colSort[col].asc?'↑':'↓';renderColumn(col);}
 function renderColumn(col){
-  let units=S.devices.filter(d=>col==='all'||getStatus(S.positions[d.id])===col);
+  let units=S.devices.filter(d=>col==='all'||getStatus(S.positions[d.id],d)===col);
   const{by,asc}=S.colSort[col];
   if(by==='alpha')units.sort((a,b)=>asc?a.name.localeCompare(b.name):b.name.localeCompare(a.name));
   else units.sort((a,b)=>{const ta=S.positions[a.id]?new Date(S.positions[a.id].serverTime).getTime():0,tb=S.positions[b.id]?new Date(S.positions[b.id].serverTime).getTime():0;return asc?tb-ta:ta-tb;});
@@ -1064,7 +1065,7 @@ function renderColumn(col){
   if(!units.length){el.innerHTML='<div class="dcol-empty">Sin unidades en este estado</div>';return;}
   const stC={moving:'var(--green)',idle:'var(--orange)',off:'var(--muted)',no_update:'var(--red)'};
   el.innerHTML=units.map(d=>{
-    const p=S.positions[d.id];const st=getStatus(p);
+    const p=S.positions[d.id];const st=getStatus(p,d);
     const dotC=stC[st]||'var(--silver)';const blink=st==='moving'?';animation:blink 2s infinite':'';
     const spdTxt=(st==='moving'&&p)?'<span class="dv-spd">'+spd(p.speed)+' km/h</span>':'';
     const agoTxt=p?'<span class="dv-ago">'+timeAgo(new Date(p.serverTime))+'</span>':'<span class="dv-ago">—</span>';
@@ -1141,7 +1142,7 @@ function dashSearch(){
   const stColors={moving:'var(--green)',idle:'var(--orange)',off:'var(--muted)',no_update:'var(--red)'};
   const stBg={moving:'#d1fae5',idle:'#fef3c7',off:'var(--silver-light)',no_update:'#fee2e2'};
   const stLabels={moving:'En movimiento',idle:'Detenido',off:'Apagado',no_update:'Sin actualización'};
-  res.innerHTML=matches.map(d=>{const p=S.positions[d.id];const st=getStatus(p);return'<div class="dr-item" onclick="goToUnitMap('+d.id+')"><div class="dr-dot" style="background:'+stColors[st]+'"></div><div class="dr-name">'+esc(d.name)+'</div><span class="dr-badge" style="background:'+stBg[st]+';color:'+stColors[st]+'">'+stLabels[st]+'</span></div>';}).join('');
+  res.innerHTML=matches.map(d=>{const p=S.positions[d.id];const st=getStatus(p,d);return'<div class="dr-item" onclick="goToUnitMap('+d.id+')"><div class="dr-dot" style="background:'+stColors[st]+'"></div><div class="dr-name">'+esc(d.name)+'</div><span class="dr-badge" style="background:'+stBg[st]+';color:'+stColors[st]+'">'+stLabels[st]+'</span></div>';}).join('');
   res.classList.add('show');
 }
 
