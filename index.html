@@ -143,8 +143,8 @@
     @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
     #screen-history { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px; }
-    .device-selector { background:white; border-radius:12px; padding:4px; margin-bottom:12px; display:flex; gap:4px; border:1px solid var(--border); overflow-x:auto; }
-    .dev-btn { padding:8px 14px; border-radius:9px; border:none; font-family:var(--font); font-size:11px; font-weight:700; color:var(--muted); cursor:pointer; background:transparent; white-space:nowrap; transition:all 0.2s; }
+    .device-selector { background:white; border-radius:12px; padding:6px; margin-bottom:12px; display:flex; flex-direction:column; gap:4px; border:1px solid var(--border); max-height:200px; overflow-y:auto; }
+    .dev-btn { padding:10px 14px; border-radius:9px; border:none; font-family:var(--font); font-size:11px; font-weight:700; color:var(--muted); cursor:pointer; background:transparent; white-space:nowrap; transition:all 0.2s; width:100%; text-align:left; }
     .dev-btn.active { background:var(--navy); color:white; }
     .hist-item { background:white; border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; box-shadow:var(--shadow); display:flex; align-items:center; gap:12px; }
     .hist-time-col { text-align:center; flex-shrink:0; min-width:44px; }
@@ -195,7 +195,7 @@
     .sound-off { background:#94a3b8; color:white; }
 
     /* ALERT MGR */
-    #alert-mgr-overlay { position:fixed; inset:0; z-index:8000; background:rgba(15,45,110,0.55); backdrop-filter:blur(4px); display:none; align-items:flex-end; }
+    #alert-mgr-overlay { position:fixed; inset:0; z-index:8000; background:rgba(15,45,110,0.55); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
     #alert-mgr-overlay.open { display:flex; }
     #alert-mgr-panel { width:100%; background:white; border-radius:24px 24px 0 0; padding:0 0 32px; box-shadow:0 -8px 40px rgba(26,61,143,0.25); animation:slideUp 0.3s ease; max-height:80vh; overflow-y:auto; }
     .alert-mgr-handle { width:40px; height:4px; border-radius:2px; background:#dde6f0; margin:12px auto 0; }
@@ -209,7 +209,7 @@
     .picker-item.selected { color:var(--navy); font-weight:800; background:var(--blue-light); }
 
     /* MINIMAP */
-    #minimap-overlay { position:fixed; inset:0; z-index:8500; background:rgba(15,45,110,0.6); backdrop-filter:blur(3px); display:none; align-items:flex-end; }
+    #minimap-overlay { position:fixed; inset:0; z-index:8500; background:rgba(15,45,110,0.6); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; padding:16px; }
     #minimap-overlay.open { display:flex; }
     #minimap-panel { width:100%; background:white; border-radius:24px 24px 0 0; padding-bottom:24px; box-shadow:0 -8px 40px rgba(26,61,143,0.25); animation:slideUp 0.3s ease; }
     #minimap-handle { width:40px; height:4px; border-radius:2px; background:#dde6f0; margin:12px auto 0; }
@@ -219,15 +219,15 @@
     #minimap-el { height:260px; width:100%; }
 
     /* REPLAY */
-    #replay-overlay { position:fixed; inset:0; z-index:8600; background:rgba(15,45,110,0.6); backdrop-filter:blur(3px); display:none; align-items:flex-end; }
+    #replay-overlay { position:fixed; inset:0; z-index:8600; background:rgba(15,45,110,0.6); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; padding:16px; }
     #replay-overlay.open { display:flex; }
-    #replay-panel { width:100%; background:white; border-radius:24px 24px 0 0; box-shadow:0 -8px 40px rgba(26,61,143,0.25); animation:slideUp 0.3s ease; overflow:hidden; }
-    #replay-handle { width:40px; height:4px; border-radius:2px; background:#dde6f0; margin:12px auto 0; }
+    #replay-panel { width:100%; max-width:520px; height:85vh; background:white; border-radius:20px; box-shadow:0 8px 48px rgba(26,61,143,0.35); animation:slideUp 0.3s ease; overflow:hidden; display:flex; flex-direction:column; }
+    #replay-handle { width:40px; height:4px; border-radius:2px; background:#dde6f0; margin:12px auto 0; flex-shrink:0; }
     #replay-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 10px; border-bottom:1px solid #dde6f0; }
     #replay-title { font-size:14px; font-weight:800; color:#1a3d8f; }
     #replay-close { border:none; background:#f0f4fa; border-radius:10px; padding:7px 10px; font-size:15px; cursor:pointer; color:#64748b; }
-    #replay-map-el { height:240px; width:100%; }
-    #replay-controls { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+    #replay-map-el { flex:1; width:100%; min-height:0; }
+    #replay-controls { padding:12px 16px; display:flex; flex-direction:column; gap:10px; flex-shrink:0; }
     #replay-play-row { display:flex; align-items:center; gap:10px; }
     #replay-play-btn { width:48px; height:48px; border-radius:50%; border:none; background:var(--navy); color:white; font-size:20px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(26,61,143,0.3); }
     #replay-progress-wrap { flex:1; display:flex; flex-direction:column; gap:4px; }
@@ -248,7 +248,7 @@
     #btn-nav-vehicle:active { transform:scale(0.96); background:var(--blue-light); }
 
     /* NAV SHEET */
-    #nav-sheet-overlay { position:fixed; inset:0; z-index:9500; background:rgba(15,45,110,0.6); backdrop-filter:blur(4px); display:none; align-items:flex-end; }
+    #nav-sheet-overlay { position:fixed; inset:0; z-index:9500; background:rgba(15,45,110,0.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
     #nav-sheet-overlay.open { display:flex; }
     #nav-sheet { width:100%; background:white; border-radius:24px 24px 0 0; padding:0 0 32px; box-shadow:0 -8px 40px rgba(26,61,143,0.28); animation:slideUp 0.3s ease; }
     .nav-sheet-handle { width:40px; height:4px; background:#dde6f0; border-radius:2px; margin:12px auto 0; }
@@ -529,7 +529,7 @@
     <div id="replay-map-el"></div>
     <div id="replay-controls">
       <div id="replay-play-row">
-        <button id="replay-dir-btn" onclick="toggleReplayDir()" style="width:40px;height:40px;border-radius:50%;border:2px solid #1a3d8f;background:white;color:#2B4DE8;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">⏩</button>
+        <button id="replay-dir-btn" onclick="rewindReplay()" style="width:40px;height:40px;border-radius:50%;border:2px solid #1a3d8f;background:white;color:#2B4DE8;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;" title="Rebobinar 10">◀◀</button>
         <button id="replay-play-btn" onclick="toggleReplay()">▶</button>
         <div id="replay-progress-wrap">
           <input type="range" id="replay-progress" min="0" max="100" value="0" oninput="seekReplay(this.value)">
@@ -838,9 +838,9 @@ function getMotionInfo(v) {
     return v.speed > 2 ? { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' }
                        : { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
   }
-  if (age > 90)  return { cls:'off', label:'APAGADO', color:'#94a3b8' };
   if (v.speed > 2) return { cls:'moving', label:'EN MOVIMIENTO', color:'#2d7dd2' };
-  if (v.ignition === false) return { cls:'off', label:'APAGADO', color:'#94a3b8' };
+  if (v.ignition === true) return { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
+  if (age > 90 || v.ignition === false) return { cls:'off', label:'APAGADO', color:'#94a3b8' };
   return { cls:'stopped', label:'DETENIDO ENCENDIDO', color:'#92400e' };
 }
 
@@ -1014,7 +1014,7 @@ function loadHist(id) {
   if (id) histId=id;
   renderHistSelector();
   var dateEl=document.getElementById('hist-date');
-  var today=new Date().toISOString().slice(0,10);
+  var today=new Date(new Date().getTime()-4*60*60*1000).toISOString().slice(0,10);
   if (!dateEl.value) dateEl.value=today;
   var periodEl=document.getElementById('hist-period');
   var period=periodEl?periodEl.value:'all';
@@ -1152,15 +1152,15 @@ function closeMinimap(){document.getElementById('minimap-overlay').classList.rem
 // REPLAY
 var replayMap=null,replayPositions=[],replayIdx=0;
 var replayTimer=null,replayPlaying=false,replaySpeed=5,replayDir=1;
-var replayMarker=null,replayPolyline=null;
+var replayMarker=null,replayPolyline=null,replayStartMarker=null,replayEndMarker=null;
 
-function openReplayDirecto(){if(!histPositions||!histPositions.length){alert('Carga el historial primero');return;}replayPositions=histPositions;replayIdx=0;var v=vehicles.find(function(x){return x.id===histId;});document.getElementById('replay-title').textContent=v?v.name:'Repetición de Ruta';document.getElementById('replay-overlay').classList.add('open');setTimeout(function(){if(!replayMap){replayMap=L.map('replay-map-el',{zoomControl:false}).setView([18.9,-70.3],8);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(replayMap);L.control.zoom({position:'topright'}).addTo(replayMap);}replayMap.invalidateSize();if(replayPolyline)replayMap.removeLayer(replayPolyline);if(replayMarker)replayMap.removeLayer(replayMarker);var latlngs=replayPositions.map(function(p){return[p.latitude,p.longitude];});replayPolyline=L.polyline(latlngs,{color:'#1a3d8f',weight:3,opacity:0.6}).addTo(replayMap);if(latlngs.length)replayMap.fitBounds(replayPolyline.getBounds(),{padding:[20,20]});var first=replayPositions[0];var mkIcon=L.divIcon({className:'',html:'<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:3px solid #059669;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3 L21 21 L12 15.5 L3 21 Z" fill="white"/></svg></div>',iconSize:[34,34],iconAnchor:[17,17]});replayMarker=L.marker([first.latitude,first.longitude],{icon:mkIcon}).addTo(replayMap);document.getElementById('replay-progress').value=0;document.getElementById('replay-info').textContent=replayPositions.length+' posiciones cargadas';},250);}
+function openReplayDirecto(){if(!histPositions||!histPositions.length){alert('Carga el historial primero');return;}replayPositions=histPositions;replayIdx=0;var v=vehicles.find(function(x){return x.id===histId;});document.getElementById('replay-title').textContent=v?v.name:'Repetición de Ruta';document.getElementById('replay-overlay').classList.add('open');setTimeout(function(){if(!replayMap){replayMap=L.map('replay-map-el',{zoomControl:false}).setView([18.9,-70.3],8);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(replayMap);L.control.zoom({position:'topright'}).addTo(replayMap);}replayMap.invalidateSize();if(replayPolyline)replayMap.removeLayer(replayPolyline);if(replayMarker)replayMap.removeLayer(replayMarker);if(replayStartMarker)replayMap.removeLayer(replayStartMarker);if(replayEndMarker)replayMap.removeLayer(replayEndMarker);var latlngs=replayPositions.map(function(p){return[p.latitude,p.longitude];});replayPolyline=L.polyline(latlngs,{color:'#1a3d8f',weight:3,opacity:0.6}).addTo(replayMap);if(latlngs.length)replayMap.fitBounds(replayPolyline.getBounds(),{padding:[20,20]});var first=replayPositions[0];var last=replayPositions[replayPositions.length-1];var mkIcon=L.divIcon({className:'',html:'<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:3px solid #059669;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3 L21 21 L12 15.5 L3 21 Z" fill="white"/></svg></div>',iconSize:[34,34],iconAnchor:[17,17]});replayMarker=L.marker([first.latitude,first.longitude],{icon:mkIcon}).addTo(replayMap);var startIcon=L.divIcon({className:'',html:'<div style="width:32px;height:32px;border-radius:50%;background:#059669;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;">🏠</div>',iconSize:[32,32],iconAnchor:[16,16]});replayStartMarker=L.marker([first.latitude,first.longitude],{icon:startIcon,zIndexOffset:500}).addTo(replayMap);var endIcon=L.divIcon({className:'',html:'<div style="width:32px;height:32px;border-radius:50%;background:#dc2626;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;">🏁</div>',iconSize:[32,32],iconAnchor:[16,16]});replayEndMarker=L.marker([last.latitude,last.longitude],{icon:endIcon,zIndexOffset:500}).addTo(replayMap);document.getElementById('replay-progress').value=0;document.getElementById('replay-info').textContent=replayPositions.length+' posiciones cargadas';},250);}
 function closeReplay(){pauseReplay();document.getElementById('replay-overlay').classList.remove('open');}
 function setReplaySpeed(s,el){replaySpeed=s;document.querySelectorAll('.replay-spd-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');}
-function toggleReplayDir(){replayDir=replayDir===1?-1:1;document.getElementById('replay-dir-btn').textContent=replayDir===1?'⏩':'⏪';if(replayDir===-1&&replayIdx<=0)replayIdx=replayPositions.length-1;if(replayDir===1&&replayIdx>=replayPositions.length-1)replayIdx=0;}
+
 function toggleReplay(){if(replayPlaying){pauseReplay();}else{playReplay();}}
-function playReplay(){if(!replayPositions.length)return;if(replayDir===1&&replayIdx>=replayPositions.length-1)replayIdx=0;if(replayDir===-1&&replayIdx<=0)replayIdx=replayPositions.length-1;replayPlaying=true;document.getElementById('replay-play-btn').textContent='⏸';replayTimer=setInterval(function(){if(replayDir===1&&replayIdx>=replayPositions.length-1){pauseReplay();return;}if(replayDir===-1&&replayIdx<=0){pauseReplay();return;}replayIdx+=replayDir;var p=replayPositions[replayIdx];var pct=Math.round(replayIdx/(replayPositions.length-1)*100);document.getElementById('replay-progress').value=pct;var t=new Date(p.deviceTime||p.fixTime);var tRD=new Date(t.getTime()-4*60*60*1000);var spd=Math.round((p.speed||0)*1.852);document.getElementById('replay-info').textContent=tRD.toISOString().slice(11,16)+' · '+spd+' km/h';var icon=L.divIcon({className:'',html:'<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:3px solid #059669;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="18" height="18" style="transform:rotate('+( p.course||0)+'deg)"><path d="M12 3 L21 21 L12 15.5 L3 21 Z" fill="white"/></svg></div>',iconSize:[34,34],iconAnchor:[17,17]});replayMarker.setLatLng([p.latitude,p.longitude]).setIcon(icon);replayMap.panTo([p.latitude,p.longitude],{animate:false});},Math.round(1000/replaySpeed));}
-function pauseReplay(){replayPlaying=false;if(replayTimer){clearInterval(replayTimer);replayTimer=null;}document.getElementById('replay-play-btn').textContent='▶';}
+function playReplay(){if(!replayPositions.length)return;if(replayDir===1&&replayIdx>=replayPositions.length-1)replayIdx=0;if(replayDir===-1&&replayIdx<=0)replayIdx=replayPositions.length-1;replayPlaying=true;document.getElementById('replay-play-btn').textContent='⏸';replayTimer=setInterval(function(){if(replayDir===1&&replayIdx>=replayPositions.length-1){pauseReplay();return;}if(replayDir===-1&&replayIdx<=0){pauseReplay();return;}replayIdx+=replayDir;var p=replayPositions[replayIdx];var pct=Math.round(replayIdx/(replayPositions.length-1)*100);document.getElementById('replay-progress').value=pct;var t=new Date(p.deviceTime||p.fixTime);var tRD=new Date(t.getTime()-4*60*60*1000);var spd=Math.round((p.speed||0)*1.852);document.getElementById('replay-info').textContent=tRD.toISOString().slice(11,16)+' · '+spd+' km/h';var icon=L.divIcon({className:'',html:'<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,#4A9EF5,#2B4DE8);border:3px solid #059669;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="18" height="18" style="transform:rotate('+(((p.course||0)+180)%360)+'deg)"><path d="M12 3 L21 21 L12 15.5 L3 21 Z" fill="white"/></svg></div>',iconSize:[34,34],iconAnchor:[17,17]});replayMarker.setLatLng([p.latitude,p.longitude]).setIcon(icon);replayMap.panTo([p.latitude,p.longitude],{animate:false});},Math.round(1000/replaySpeed));}
+function rewindReplay(){pauseReplay();replayIdx=Math.max(0,replayIdx-10);var p=replayPositions[replayIdx];if(replayMarker)replayMarker.setLatLng([p.latitude,p.longitude]);var t=new Date(p.deviceTime||p.fixTime);var tRD=new Date(t.getTime()-4*60*60*1000);document.getElementById('replay-progress').value=Math.round(replayIdx/(replayPositions.length-1)*100);document.getElementById('replay-info').textContent=tRD.toISOString().slice(11,16)+' · '+Math.round((p.speed||0)*1.852)+' km/h';playReplay();}function pauseReplay(){replayPlaying=false;if(replayTimer){clearInterval(replayTimer);replayTimer=null;}document.getElementById('replay-play-btn').textContent='▶';}
 function seekReplay(val){pauseReplay();if(!replayPositions.length)return;replayIdx=Math.round(val/100*(replayPositions.length-1));var p=replayPositions[replayIdx];if(replayMarker)replayMarker.setLatLng([p.latitude,p.longitude]);var t=new Date(p.deviceTime||p.fixTime);var tRD=new Date(t.getTime()-4*60*60*1000);document.getElementById('replay-info').textContent=tRD.toISOString().slice(11,16)+' · '+Math.round((p.speed||0)*1.852)+' km/h';}
 function hideRecorridos(){document.getElementById('btn-recorridos').classList.remove('visible');}
 
